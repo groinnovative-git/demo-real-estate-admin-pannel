@@ -1,0 +1,231 @@
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--card-border);
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 800;
+    overflow-y: auto;
+    box-shadow: var(--shadow-sm);
+}
+
+.sidebar-logo {
+    height: var(--header-height);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--card-border);
+    box-sizing: border-box;
+}
+
+.sidebar-logo-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: var(--gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(245, 182, 66, 0.3);
+}
+
+.sidebar-logo-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.sidebar-logo-sub {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+}
+
+.sidebar-divider {
+    border: none;
+    border-top: 1px solid var(--card-border);
+    margin: 12px 0;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar-section-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding: 8px 10px 4px;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    text-decoration: none;
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+}
+
+.sidebar-link:hover {
+    background: #f1f5f9;
+    color: var(--text-primary);
+}
+
+.sidebar-link.active {
+    background: #fef3c7;
+    color: var(--gold-dark);
+    font-weight: 600;
+}
+
+.sidebar-link.active svg {
+    color: var(--gold-dark);
+}
+
+.sidebar-dropdown-btn {
+    position: relative;
+}
+
+.sidebar-dropdown-btn.open {
+    background: #f8f9fa;
+    color: var(--text-primary);
+}
+
+.sidebar-chevron {
+    margin-left: auto;
+    opacity: 0.6;
+}
+
+.sidebar-submenu {
+    margin: 4px 0 4px 10px;
+    padding-left: 14px;
+    border-left: 2px solid rgba(0, 0, 0, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    animation: slideIn 0.2s ease;
+}
+
+.sidebar-sub-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.825rem;
+    color: var(--text-muted);
+    transition: var(--transition);
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+}
+
+.sidebar-sub-link:hover {
+    background: #f1f5f9;
+    color: var(--gold-dark);
+}
+
+/* Footer */
+.sidebar-footer {
+    padding: 12px 14px;
+    border-top: 1px solid var(--card-border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.sidebar-user-info {
+    min-width: 0;
+}
+
+.sidebar-user-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-role-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.sidebar-role-badge.admin {
+    background: #fef3c7;
+    color: var(--gold-dark);
+}
+
+.sidebar-role-badge.manager {
+    background: #dbeafe;
+    color: var(--info);
+}
+
+.sidebar-logout {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    transition: var(--transition);
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.sidebar-logout:hover {
+    background: #fee2e2;
+    color: var(--danger);
+
+}

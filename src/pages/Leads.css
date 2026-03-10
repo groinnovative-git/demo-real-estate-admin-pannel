@@ -1,0 +1,25 @@
+.leads-page {
+    display: flex;
+    flex-direction: column;
+}
+
+.lead-info-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    color: var(--gold);
+}
+
+.lead-info-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 2px;
+}
+
+.lead-info-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
