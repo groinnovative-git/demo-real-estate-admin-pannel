@@ -5,10 +5,11 @@
     padding: 8px 0;
 }
 
+/* ── KPI stat cards ── */
 .dashboard-stats {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 24px;
+    gap: 20px;
 }
 
 @media (max-width: 1500px) {
@@ -29,36 +30,71 @@
     }
 }
 
-.card {
-    background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-    transition: all 0.25s ease;
-}
-
-.card:hover {
-    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
-}
-
 .stat-card {
     background: #ffffff;
-    border: 1px solid #f1f5f9;
-    border-radius: 16px;
-    box-shadow: 0 2px 12px -2px rgba(0, 0, 0, 0.04);
-    transition: all 0.3s ease;
+    border: 1px solid #e8ecf1;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--gold), var(--gold-dark));
+    opacity: 0;
+    transition: opacity 0.25s ease;
 }
 
 .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 20px -5px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
+    border-color: rgba(245, 182, 66, 0.2);
 }
 
+.stat-card:hover::before {
+    opacity: 1;
+}
+
+/* ── Card base ── */
+.card {
+    background: #ffffff;
+    border: 1px solid #e8ecf1;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: all 0.25s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.06);
+}
+
+/* ── Chart card ── */
+.dashboard-chart-main {
+    padding: 0;
+}
+
+/* ── Table row hover ── */
+.table-row-hover {
+    transition: background-color 0.2s;
+}
+
+.table-row-hover:hover {
+    background-color: #fafbfc;
+}
+
+/* ── Small icon button ── */
 .btn-icon-sm {
     width: 32px;
     height: 32px;
     border-radius: 8px;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #e8ecf1;
     background: #ffffff;
     display: flex;
     align-items: center;
@@ -69,19 +105,12 @@
 }
 
 .btn-icon-sm:hover {
-    background: #f8fafc;
-    color: #86c127;
-    border-color: #86c127;
+    background: #fafbfc;
+    color: var(--gold-dark);
+    border-color: rgba(245, 182, 66, 0.3);
 }
 
-.table-row-hover {
-    transition: background-color 0.2s;
-}
-
-.table-row-hover:hover {
-    background-color: #f8fafc;
-}
-
+/* ── Text button ── */
 .btn-text {
     background: none;
     border: none;
@@ -91,6 +120,9 @@
     outline: inherit;
 }
 
-.dashboard-chart-main {
-    padding: 0;
+/* ── Charts grid responsive ── */
+@media (max-width: 1024px) {
+    .dashboard > div:nth-child(2) {
+        grid-template-columns: 1fr !important;
+    }
 }

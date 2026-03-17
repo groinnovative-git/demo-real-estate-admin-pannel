@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLocation } from 'react-router-dom';
-import { Bell, Search, ChevronDown } from 'lucide-react';
+import { Bell, ChevronDown, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Header.css';
 
@@ -10,7 +10,7 @@ const PAGE_TITLES = {
     '/leads': { title: 'Leads', sub: 'Customer enquiries from contact page' },
 };
 
-export default function Header() {
+export default function Header({ sidebarCollapsed, onToggleSidebar }) {
     const { user } = useAuth();
     const location = useLocation();
 
@@ -21,8 +21,17 @@ export default function Header() {
     return (
         <header className="header">
             <div className="header-left">
-                <h1 className="header-title">{pageInfo.title}</h1>
-                <span className="header-sub">{pageInfo.sub}</span>
+                <button
+                    className="header-sidebar-toggle"
+                    onClick={onToggleSidebar}
+                    title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                >
+                    {sidebarCollapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+                </button>
+                <div>
+                    <h1 className="header-title">{pageInfo.title}</h1>
+                    <span className="header-sub">{pageInfo.sub}</span>
+                </div>
             </div>
             <div className="header-right">
                 <button className="header-icon-btn">

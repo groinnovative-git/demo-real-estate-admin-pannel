@@ -4,39 +4,43 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import {
-    Building2, CheckCircle, XCircle, Eye, Users,
+    Landmark, BadgeCheck, Handshake, Activity, UserCheck,
     TrendingUp, TrendingDown, Phone, Mail, Clock, Calendar
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { dashboardStats } from '../data/mockData';
 import './Dashboard.css';
 
-const StatCard = ({ label, value, icon: Icon, color }) => (
+const GRADIENTS = {
+    green:  'linear-gradient(135deg, #86c127 0%, #5da00e 100%)',
+    blue:   'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+    red:    'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+    gold:   'linear-gradient(135deg, #f5b642 0%, #d9960a 100%)',
+    purple: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+};
+
+const StatCard = ({ label, value, icon: Icon, color, gradient }) => (
     <div className="stat-card" style={{ 
-        padding: '16px 20px', 
+        padding: '20px 22px', 
         display: 'flex', 
         flexDirection: 'row',
         alignItems: 'center', 
         gap: 16, 
-        height: '100%',
-        background: '#ffffff',
-        borderRadius: '16px',
-        boxShadow: '0 2px 12px -2px rgba(0, 0, 0, 0.04)',
-        border: '1px solid #f1f5f9'
+        height: '100%'
     }}>
         <div style={{ 
-            width: 48, 
-            height: 48, 
-            borderRadius: '14px', 
-            background: color ? `${color}10` : '#f8fafc', 
-            color: color || '#64748b',
+            width: 46, 
+            height: 46, 
+            borderRadius: '12px', 
+            background: gradient || GRADIENTS.green,
+            color: '#ffffff',
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'center',
             flexShrink: 0,
-            border: `1px solid ${color ? `${color}12` : '#f1f5f9'}`
+            boxShadow: `0 6px 16px -2px ${color}40`
         }}>
-            {Icon && <Icon size={22} strokeWidth={2} />}
+            {Icon && <Icon size={20} strokeWidth={1.8} />}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
             <span style={{ 
@@ -50,9 +54,9 @@ const StatCard = ({ label, value, icon: Icon, color }) => (
                 {label}
             </span>
             <span style={{ 
-                fontSize: '1.5rem', 
+                fontSize: '1.55rem', 
                 fontWeight: 800, 
-                lineHeight: 1.1, 
+                lineHeight: 1.2, 
                 color: '#0f172a',
                 letterSpacing: '-0.02em'
             }}>
@@ -95,19 +99,18 @@ export default function Dashboard() {
                name === 'house' ? '#F59E0B' : '#EF4444'
     }));
 
-    // Data for Sold Out Properties (monthly trend from mockData or derived)
-    // For now using monthlyData leads as a proxy for sales or customizing it
+    // Data for Sold Out Properties
     const soldData = monthlyData.map(d => ({
         month: d.month,
-        sold: Math.floor(d.listings * 0.6) // Mocking some sold data based on listings
+        sold: Math.floor(d.listings * 0.6)
     }));
 
     const stats = [
-        { label: 'Total properties', value: properties.length.toString(), icon: Building2, color: '#86c127' },
-        { label: 'Active properties', value: activeProperties.length.toString(), icon: CheckCircle, color: '#3B82F6' },
-        { label: 'Sold properties', value: soldProperties.length.toString(), icon: XCircle, color: '#ef4444' },
-        { label: 'Leads', value: leads.length.toString(), icon: Users, color: '#f5b642' },
-        { label: 'Visitors', value: totalVisitors.toLocaleString(), icon: Eye, color: '#8b5cf6' },
+        { label: 'Total properties', value: properties.length.toString(), icon: Landmark, color: '#86c127', gradient: GRADIENTS.green },
+        { label: 'Active properties', value: activeProperties.length.toString(), icon: BadgeCheck, color: '#3B82F6', gradient: GRADIENTS.blue },
+        { label: 'Sold properties', value: soldProperties.length.toString(), icon: Handshake, color: '#ef4444', gradient: GRADIENTS.red },
+        { label: 'Leads', value: leads.length.toString(), icon: UserCheck, color: '#f5b642', gradient: GRADIENTS.gold },
+        { label: 'Visitors', value: totalVisitors.toLocaleString(), icon: Activity, color: '#8b5cf6', gradient: GRADIENTS.purple },
     ];
 
     const recentLeads = [...leads].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
