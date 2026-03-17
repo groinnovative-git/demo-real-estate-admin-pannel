@@ -1,8 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Building2, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
+
+import houseImg from '../assets/house.jpg';
+import famlandImg from '../assets/famland.jpg';
+import appartmentImg from '../assets/Appartment.jpg';
+import villaImg from '../assets/villa.jpg';
+import logoImg from '../assets/logo.png';
+
+const SLIDES = [houseImg, famlandImg, appartmentImg, villaImg];
+const SLIDE_INTERVAL = 4000;
 
 export default function Login() {
     const { login, error, clearError } = useAuth();
@@ -10,6 +19,20 @@ export default function Login() {
     const [form, setForm] = useState({ email: '', password: '' });
     const [showPass, setShowPass] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const [prevSlide, setPrevSlide] = useState(0);
+    const intervalRef = useRef(null);
+
+    useEffect(() => {
+        intervalRef.current = setInterval(() => {
+            setCurrentSlide(prev => {
+                setPrevSlide(prev);
+                return (prev + 1) % SLIDES.length;
+            });
+        }, SLIDE_INTERVAL);
+
+        return () => clearInterval(intervalRef.current);
+    }, []);
 
     const handleChange = (e) => {
         setForm(f => ({ ...f, [e.target.name]: e.target.value }));
@@ -31,23 +54,32 @@ export default function Login() {
 
     return (
         <div className="login-page">
-            {/* Animated background blobs */}
+            {/* Background image slideshow */}
             <div className="login-bg">
-                <div className="login-blob login-blob-1" />
-                <div className="login-blob login-blob-2" />
-                <div className="login-blob login-blob-3" />
+                {SLIDES.map((src, i) => {
+                    let slideClass = 'login-slide';
+                    if (i === currentSlide) slideClass += ' active';
+                    else if (i === prevSlide) slideClass += ' prev';
+                    return (
+                        <img
+                            key={i}
+                            src={src}
+                            alt=""
+                            className={slideClass}
+                            loading={i === 0 ? 'eager' : 'lazy'}
+                            draggable="false"
+                        />
+                    );
+                })}
+                <div className="login-overlay" />
             </div>
 
             <div className="login-card">
                 {/* Logo */}
                 <div className="login-logo">
-                    <div className="login-logo-icon">
-                        <Building2 size={28} />
-                    </div>
-                    <div>
-                        <h1 className="login-brand">Star Properties</h1>
-                        <p className="login-tagline">Real Estate Management</p>
-                    </div>
+                    <img src={logoImg} alt="Star Properties" className="login-logo-img" />
+                    <h1 className="login-brand">Star Properties</h1>
+                    <p className="login-tagline">Real Estate Management</p>
                 </div>
 
                 <h2 className="login-title">Welcome back</h2>
