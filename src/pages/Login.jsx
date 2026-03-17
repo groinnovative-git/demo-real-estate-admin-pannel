@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
 
@@ -16,9 +16,14 @@ const SLIDE_INTERVAL = 4000;
 export default function Login() {
     const { login, error, clearError } = useAuth();
     const navigate = useNavigate();
+    
     const [form, setForm] = useState({ email: '', password: '' });
+    const [errors, setErrors] = useState({ email: '', password: '' });
+    
     const [showPass, setShowPass] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [successToast, setSuccessToast] = useState(false);
+    
     const [currentSlide, setCurrentSlide] = useState(0);
     const [prevSlide, setPrevSlide] = useState(0);
     const intervalRef = useRef(null);
@@ -34,23 +39,68 @@ export default function Login() {
         return () => clearInterval(intervalRef.current);
     }, []);
 
+    const validateField = (name, value) => {
+        let errMsg = '';
+        if (!value.trim()) {
+            errMsg = name === 'email' ? 'Email is required.' : 'Password is required.';
+        } else if (name === 'email' && !/\S+@\S+\.\S+/.test(value)) {
+            errMsg = 'Please enter a valid email address.';
+        }
+        
+        setErrors(prev => ({ ...prev, [name]: errMsg }));
+        return !errMsg;
+    };
+
     const handleChange = (e) => {
-        setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setForm(f => ({ ...f, [name]: value }));
+        
+        // Clear field error as soon as they type
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: '' }));
+        }
         if (error) clearError();
+    };
+
+    const handleBlur = (e) => {
+        validateField(e.target.name, e.target.value);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validate all fields manually
+        const isEmailValid = validateField('email', form.email);
+        const isPassValid = validateField('password', form.password);
+        
+        if (!isEmailValid || !isPassValid) {
+            return; // Don't submit if validation fails
+        }
+        
         setLoading(true);
         setTimeout(() => {
             const ok = login(form.email, form.password);
             setLoading(false);
-            if (ok) navigate('/dashboard');
+            if (ok) {
+                setSuccessToast(true);
+                setTimeout(() => {
+                    navigate('/dashboard');
+                }, 1200); // Wait 1.2s to show success toast then redirect
+            }
         }, 600);
     };
 
-    const fillAdmin = () => setForm({ email: 'admin@star.com', password: 'admin123' });
-    const fillManager = () => setForm({ email: 'manager@star.com', password: 'manager123' });
+    const fillAdmin = () => {
+        setForm({ email: 'admin@star.com', password: 'admin123' });
+        setErrors({ email: '', password: '' });
+        if (error) clearError();
+    };
+    
+    const fillManager = () => {
+        setForm({ email: 'manager@star.com', password: 'manager123' });
+        setErrors({ email: '', password: '' });
+        if (error) clearError();
+    };
 
     return (
         <div className="login-page">
@@ -74,6 +124,14 @@ export default function Login() {
                 <div className="login-overlay" />
             </div>
 
+            {/* Success Toast */}
+            {successToast && (
+                <div className="login-toast-success">
+                    <CheckCircle2 size={18} />
+                    <span>Successfully logged in</span>
+                </div>
+            )}
+
             <div className="login-card">
                 {/* Logo */}
                 <div className="login-logo">
@@ -92,7 +150,7 @@ export default function Login() {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="login-form">
+                <form onSubmit={handleSubmit} className="login-form" noValidate>
                     <div className="form-group">
                         <label className="form-label">Email Address</label>
                         <input
@@ -100,10 +158,11 @@ export default function Login() {
                             name="email"
                             value={form.email}
                             onChange={handleChange}
-                            className="form-control"
+                            onBlur={handleBlur}
+                            className={`form-control ${errors.email ? 'is-invalid' : ''}`}
                             placeholder="Enter your email"
-                            required
                         />
+                        {errors.email && <div className="login-field-error">{errors.email}</div>}
                     </div>
 
                     <div className="form-group">
@@ -114,9 +173,9 @@ export default function Login() {
                                 name="password"
                                 value={form.password}
                                 onChange={handleChange}
-                                className="form-control"
+                                onBlur={handleBlur}
+                                className={`form-control ${errors.password ? 'is-invalid' : ''}`}
                                 placeholder="Enter your password"
-                                required
                             />
                             <button
                                 type="button"
@@ -126,9 +185,10 @@ export default function Login() {
                                 {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
                         </div>
+                        {errors.password && <div className="login-field-error">{errors.password}</div>}
                     </div>
 
-                    <button type="submit" className={`btn btn-primary login-btn ${loading ? 'loading' : ''}`} disabled={loading}>
+                    <button type="submit" className={`btn btn-primary login-btn ${loading ? 'loading' : ''}`} disabled={loading || successToast}>
                         {loading ? <span className="login-spinner" /> : null}
                         {loading ? 'Signing in...' : 'Sign In'}
                     </button>

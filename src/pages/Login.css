@@ -340,3 +340,61 @@
         font-size: 1.15rem;
     }
 }
+
+/* ── Custom Validation UX ── */
+.login-card .form-control.is-invalid {
+    border-color: rgba(220, 38, 38, 0.45);
+    background: rgba(220, 38, 38, 0.04);
+}
+
+.login-card .form-control.is-invalid:focus {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+}
+
+.login-field-error {
+    font-size: 0.72rem;
+    color: #ef4444;
+    margin-top: 4px;
+    margin-left: 2px;
+    font-weight: 500;
+    animation: slideIn 0.2s ease;
+}
+
+/* ── Success Toast ── */
+.login-toast-success {
+    position: absolute;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 25, 35, 0.75);
+    border: 1px solid rgba(134, 193, 39, 0.3);
+    border-left: 4px solid #86c127;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #fff;
+    padding: 14px 22px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    animation: toastSlideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.login-toast-success svg {
+    color: #86c127;
+}
+
+@keyframes toastSlideDown {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+    }
+    to {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+}
