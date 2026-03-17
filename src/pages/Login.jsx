@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Login.css';
@@ -16,6 +16,10 @@ const SLIDE_INTERVAL = 4000;
 export default function Login() {
     const { login, error, clearError } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    
+    // Determine where to redirect after login
+    const from = location.state?.from?.pathname || '/dashboard';
     
     const [form, setForm] = useState({ email: '', password: '' });
     const [errors, setErrors] = useState({ email: '', password: '' });
@@ -84,7 +88,7 @@ export default function Login() {
             if (ok) {
                 setSuccessToast(true);
                 setTimeout(() => {
-                    navigate('/dashboard');
+                    navigate(from, { replace: true });
                 }, 1200); // Wait 1.2s to show success toast then redirect
             }
         }, 600);
