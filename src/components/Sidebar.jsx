@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
-import logoImg from '../assets/logo.png';
+import starLogoImg from '../assets/starlogo.png';
+import logo1Img from '../assets/logo1.png';
 
 const PROPERTY_TYPES = [
     { id: 'apartment', label: 'Apartment', icon: Building },
@@ -19,9 +20,18 @@ const PROPERTY_TYPES = [
 export default function Sidebar({ collapsed, onToggle }) {
     const { user, logout, isAdmin } = useAuth();
     const navigate = useNavigate();
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
     const [addOpen, setAddOpen] = useState(false);
     const popoverRef = useRef(null);
     const triggerRef = useRef(null);
+
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const showFull = !collapsed || isMobile;
 
     // Close popover on outside click (collapsed mode)
     useEffect(() => {
@@ -49,39 +59,35 @@ export default function Sidebar({ collapsed, onToggle }) {
     };
 
     return (
-        <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+        <aside className={`sidebar ${collapsed && !isMobile ? 'collapsed' : ''} ${collapsed && isMobile ? 'mobile-hidden' : ''}`}>
             {/* Logo */}
             <div className="sidebar-logo">
-                <img src={logoImg} alt="Star Properties" className="sidebar-logo-img" />
-                {!collapsed && (
-                    <>
-                        <div className="sidebar-logo-name">Star Properties</div>
-                        <div className="sidebar-logo-sub">Admin Panel</div>
-                    </>
-                )}
+                <div className="sidebar-logo-badge">
+                    <img src={collapsed && !isMobile ? starLogoImg : logo1Img} alt="Star Properties" className="sidebar-logo-img" />
+                </div>
             </div>
 
             {/* Nav */}
             <nav className="sidebar-nav">
-                {!collapsed && <div className="sidebar-section-label">Main Menu</div>}
+                {showFull && <div className="sidebar-section-label">Main Menu</div>}
 
                 <NavLink to="/dashboard" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} title="Dashboard">
                     <LayoutDashboard size={20} />
-                    {!collapsed && <span>Dashboard</span>}
+                    {showFull && <span>Dashboard</span>}
                 </NavLink>
 
                 <NavLink to="/properties" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} title="Properties">
                     <Building2 size={20} />
-                    {!collapsed && <span>Properties</span>}
+                    {showFull && <span>Properties</span>}
                 </NavLink>
 
                 <NavLink to="/leads" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} title="Leads">
                     <Users size={20} />
-                    {!collapsed && <span>Leads</span>}
+                    {showFull && <span>Leads</span>}
                 </NavLink>
 
                 <div className="sidebar-divider" />
-                {!collapsed && <div className="sidebar-section-label">Add Property</div>}
+                {showFull && <div className="sidebar-section-label">Add Property</div>}
 
                 {/* Add Property Dropdown */}
                 <div className="sidebar-dropdown-wrap" style={{ position: 'relative' }}>
@@ -92,7 +98,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                         title="Add Property"
                     >
                         <Plus size={20} />
-                        {!collapsed && (
+                        {showFull && (
                             <>
                                 <span>Add Property</span>
                                 <span className="sidebar-chevron">{addOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
@@ -101,7 +107,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                     </button>
 
                     {/* Expanded mode: inline submenu */}
-                    {!collapsed && addOpen && (
+                    {showFull && addOpen && (
                         <div className="sidebar-submenu">
                             {PROPERTY_TYPES.map(({ id, label, icon: Icon }) => (
                                 <button
@@ -120,7 +126,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                     )}
 
                     {/* Collapsed mode: floating popover */}
-                    {collapsed && addOpen && (
+                    {!showFull && addOpen && (
                         <div ref={popoverRef} className="sidebar-popover">
                             <div className="sidebar-popover-title">Add Property</div>
                             {PROPERTY_TYPES.map(({ id, label, icon: Icon }) => (
@@ -145,7 +151,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             <div className="sidebar-footer">
                 <div className="sidebar-user">
                     <div className="sidebar-avatar">{user?.avatar || user?.name?.[0]}</div>
-                    {!collapsed && (
+                    {showFull && (
                         <div className="sidebar-user-info">
                             <div className="sidebar-user-name">{user?.name}</div>
                             <div className={`sidebar-role-badge ${user?.role}`}>{user?.role}</div>

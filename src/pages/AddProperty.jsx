@@ -1,118 +1,351 @@
-import React, { useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Upload, X, CheckCircle, Building, TreePine, Landmark, Home, Store } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import {
+    Upload, X, CheckCircle, Building, MapPin, Navigation,
+    Search, Info, Home, Map, Store, Castle, Youtube, AlertCircle
+} from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { useAuth } from '../context/AuthContext';
 import './AddProperty.css';
 
-const PROPERTY_CONFIG = {
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const AMENITY_OPTIONS = [
+    'Swimming Pool', 'Gym', 'Security', 'Parking', 'Club House',
+    'Power Backup', 'Lift', 'Garden', 'Kids Play Area', 'CCTV',
+    'Intercom', 'Fire Safety',
+];
+
+const FACING_OPTIONS = ['East', 'West', 'North', 'South', 'North-East', 'North-West', 'South-East', 'South-West'];
+
+// ─── Per-type configuration ───────────────────────────────────────────────────
+
+const TYPE_CONFIG = {
     apartment: {
         label: 'Apartment',
         icon: Building,
-        color: '#f5b642',
-        description: 'Residential unit in a multi-storey building',
-        fields: ['title', 'bhk', 'floor', 'totalFloors', 'area', 'furnishing', 'facing', 'ageYears', 'maintenance', 'price', 'location', 'amenities', 'youtube', 'description'],
+        subtitle: 'Create a premium residential apartment listing for the portfolio.',
+        specTitle: 'Apartment Specifications',
+        successMsg: 'Apartment Listed Successfully!',
+        successSub: 'The apartment has been securely added to your premium portfolio.',
+        publishLabel: 'Publish Apartment Listing',
+        defaultImg: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&q=80',
+        theme: {
+            heroBg: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #fef9c3 100%)',
+            border: '#a7f3d0',
+            iconBg: 'linear-gradient(150deg, #052e16 0%, #0d6933 42%, #22c55e 100%)',
+            iconGlow: 'rgba(13, 105, 51, 0.55)',
+            accentColor: '#0d6933',
+            accentBg: 'rgba(13, 105, 51, 0.09)',
+            accentBorder: 'rgba(13, 105, 51, 0.22)',
+            watermark: '#0d6933',
+        },
+        fields: {
+            carpetArea: true,
+            bhk: true,
+            floor: true,
+            totalFloors: true,
+            furnishing: true,
+            facing: true,
+            ageYears: true,
+            maintenance: true,
+            amenities: true,
+        },
     },
     villa: {
         label: 'Villa',
-        icon: TreePine,
-        color: '#0d6933',
-        description: 'Standalone premium residential villa',
-        fields: ['title', 'bhk', 'plotArea', 'area', 'garden', 'pool', 'floors', 'parking', 'price', 'location', 'youtube', 'description'],
+        icon: Castle,
+        subtitle: 'Create a luxury villa listing for the premium portfolio.',
+        specTitle: 'Villa Specifications',
+        successMsg: 'Villa Listed Successfully!',
+        successSub: 'The villa has been securely added to your premium portfolio.',
+        publishLabel: 'Publish Villa Listing',
+        defaultImg: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=80',
+        theme: {
+            heroBg: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #fde68a 85%, #fff7ed 100%)',
+            border: '#fcd34d',
+            iconBg: 'linear-gradient(150deg, #431407 0%, #b45309 42%, #fbbf24 100%)',
+            iconGlow: 'rgba(180, 83, 9, 0.55)',
+            accentColor: '#92400e',
+            accentBg: 'rgba(180, 83, 9, 0.08)',
+            accentBorder: 'rgba(180, 83, 9, 0.22)',
+            watermark: '#b45309',
+        },
+        fields: {
+            plotArea: true,
+            builtUpArea: true,
+            bhk: true,
+            bathrooms: true,
+            furnishing: true,
+            facing: true,
+            ageYears: true,
+            parking: true,
+            amenities: true,
+        },
     },
     plot: {
         label: 'Plot',
-        icon: Landmark,
-        color: '#3B82F6',
-        description: 'Residential or commercial land parcel',
-        fields: ['title', 'area', 'dimensions', 'zone', 'cornerPlot', 'roadWidth', 'price', 'location', 'youtube', 'description'],
+        icon: Map,
+        subtitle: 'Create a plot / land listing for the portfolio.',
+        specTitle: 'Plot Specifications',
+        successMsg: 'Plot Listed Successfully!',
+        successSub: 'The plot has been added to your portfolio.',
+        publishLabel: 'Publish Plot Listing',
+        defaultImg: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&q=80',
+        theme: {
+            heroBg: 'linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 50%, #a7f3d0 80%, #ecfdf5 100%)',
+            border: '#5eead4',
+            iconBg: 'linear-gradient(150deg, #042f2e 0%, #0f766e 42%, #2dd4bf 100%)',
+            iconGlow: 'rgba(15, 118, 110, 0.55)',
+            accentColor: '#0f766e',
+            accentBg: 'rgba(15, 118, 110, 0.08)',
+            accentBorder: 'rgba(15, 118, 110, 0.22)',
+            watermark: '#0f766e',
+        },
+        fields: {
+            plotArea: true,
+            facing: true,
+            plotDimensions: true,
+            approvalDetails: true,
+            amenities: false,
+        },
     },
     house: {
         label: 'Individual House',
         icon: Home,
-        color: '#F59E0B',
-        description: 'Independent house with full ownership',
-        fields: ['title', 'bhk', 'floors', 'area', 'plotArea', 'parking', 'ageYears', 'price', 'location', 'youtube', 'description'],
+        subtitle: 'Create an individual house / bungalow listing for the portfolio.',
+        specTitle: 'House Specifications',
+        successMsg: 'House Listed Successfully!',
+        successSub: 'The house has been securely added to your premium portfolio.',
+        publishLabel: 'Publish House Listing',
+        defaultImg: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=80',
+        theme: {
+            heroBg: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 50%, #bfdbfe 80%, #f0f9ff 100%)',
+            border: '#93c5fd',
+            iconBg: 'linear-gradient(150deg, #0f172a 0%, #1d4ed8 42%, #93c5fd 100%)',
+            iconGlow: 'rgba(29, 78, 216, 0.55)',
+            accentColor: '#1d4ed8',
+            accentBg: 'rgba(29, 78, 216, 0.08)',
+            accentBorder: 'rgba(29, 78, 216, 0.20)',
+            watermark: '#1d4ed8',
+        },
+        fields: {
+            plotArea: true,
+            builtUpArea: true,
+            bhk: true,
+            bathrooms: true,
+            totalFloors: true,
+            furnishing: true,
+            facing: true,
+            ageYears: true,
+            parking: true,
+            amenities: true,
+        },
     },
     commercial: {
         label: 'Commercial Space',
         icon: Store,
-        color: '#A855F7',
-        description: 'Office, retail, or warehouse space',
-        fields: ['title', 'spaceType', 'area', 'floor', 'totalFloors', 'cabins', 'washrooms', 'powerLoad', 'price', 'location', 'youtube', 'description'],
+        subtitle: 'Create a commercial property listing for the portfolio.',
+        specTitle: 'Commercial Specifications',
+        successMsg: 'Commercial Space Listed Successfully!',
+        successSub: 'The commercial property has been added to your portfolio.',
+        publishLabel: 'Publish Commercial Listing',
+        defaultImg: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80',
+        theme: {
+            heroBg: 'linear-gradient(135deg, #f6fef9 0%, #d1fae5 45%, #fef3c7 85%, #fffbeb 100%)',
+            border: '#6ee7b7',
+            iconBg: 'linear-gradient(150deg, #022c22 0%, #065f46 42%, #34d399 100%)',
+            iconGlow: 'rgba(6, 95, 70, 0.55)',
+            accentColor: '#065f46',
+            accentBg: 'rgba(6, 95, 70, 0.08)',
+            accentBorder: 'rgba(6, 95, 70, 0.22)',
+            watermark: '#065f46',
+        },
+        fields: {
+            builtUpArea: true,
+            commercialType: true,
+            floor: true,
+            totalFloors: true,
+            furnishing: true,
+            parking: true,
+            washrooms: true,
+            ageYears: true,
+            amenities: false,
+        },
     },
 };
 
-const AMENITY_OPTIONS = ['Swimming Pool', 'Gym', 'Security', 'Parking', 'Club House', 'Power Backup', 'Lift', 'Garden', 'Kids Play Area', 'CCTV', 'Intercom', 'Fire Safety'];
+// ─── Required fields per property type ───────────────────────────────────────
+// Each entry = { key: form field name, label: human-readable name shown in toast }
+
+const REQUIRED_FIELDS = {
+    apartment: [
+        { key: 'title',       label: 'Property Title' },
+        { key: 'price',       label: 'Asking Price' },
+        { key: 'locationText', label: 'Location / Address' },
+        { key: 'carpetArea',  label: 'Carpet / Built-up Area' },
+    ],
+    villa: [
+        { key: 'title',       label: 'Property Title' },
+        { key: 'price',       label: 'Asking Price' },
+        { key: 'locationText', label: 'Location / Address' },
+        { key: 'plotArea',    label: 'Plot Area' },
+    ],
+    plot: [
+        { key: 'title',       label: 'Property Title' },
+        { key: 'price',       label: 'Asking Price' },
+        { key: 'locationText', label: 'Location / Address' },
+        { key: 'plotArea',    label: 'Plot Area' },
+    ],
+    house: [
+        { key: 'title',       label: 'Property Title' },
+        { key: 'price',       label: 'Asking Price' },
+        { key: 'locationText', label: 'Location / Address' },
+        { key: 'plotArea',    label: 'Plot Area' },
+    ],
+    commercial: [
+        { key: 'title',       label: 'Property Title' },
+        { key: 'price',       label: 'Asking Price' },
+        { key: 'locationText', label: 'Location / Address' },
+        { key: 'builtUpArea', label: 'Built-up Area' },
+    ],
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Extract YouTube video ID from watch, share, or embed URLs */
+function getYoutubeId(url) {
+    if (!url) return null;
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+    ];
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+    }
+    return null;
+}
 
 function FieldGroup({ label, children }) {
     return (
         <div className="form-group">
-            <label className="form-label">{label}</label>
+            <label className="premium-label">{label}</label>
             {children}
         </div>
     );
 }
 
+/** Floating toast — auto-dismisses after 3.5 s */
+function Toast({ message, onClose }) {
+    useEffect(() => {
+        const t = setTimeout(onClose, 3500);
+        return () => clearTimeout(t);
+    }, [message, onClose]);
+
+    return (
+        <div className="ap-toast">
+            <AlertCircle size={18} className="ap-toast-icon" />
+            <span className="ap-toast-msg">{message}</span>
+            <button type="button" className="ap-toast-close" onClick={onClose}>
+                <X size={14} />
+            </button>
+        </div>
+    );
+}
+
+/** Floating sparkle particles — CSS-only, no JS randomness */
+const PARTICLES = [
+    { x: '6%',  y: '28%', s: 16, delay: '0s',    dur: '2.2s' },
+    { x: '13%', y: '65%', s: 11, delay: '0.4s',  dur: '1.9s' },
+    { x: '20%', y: '40%', s: 20, delay: '0.9s',  dur: '2.5s' },
+    { x: '30%', y: '74%', s: 12, delay: '0.2s',  dur: '2.0s' },
+    { x: '39%', y: '20%', s: 17, delay: '1.3s',  dur: '1.8s' },
+    { x: '47%', y: '58%', s: 13, delay: '0.6s',  dur: '2.3s' },
+    { x: '56%', y: '32%', s: 20, delay: '0.1s',  dur: '2.1s' },
+    { x: '63%', y: '70%', s: 11, delay: '1.0s',  dur: '2.4s' },
+    { x: '71%', y: '24%', s: 18, delay: '0.5s',  dur: '2.0s' },
+    { x: '78%', y: '52%', s: 12, delay: '1.5s',  dur: '1.9s' },
+    { x: '85%', y: '76%', s: 16, delay: '0.8s',  dur: '2.3s' },
+    { x: '91%', y: '36%', s: 14, delay: '0.3s',  dur: '1.7s' },
+];
+
+function ParticleField() {
+    return (
+        <div className="ap-hero-particles" aria-hidden="true">
+            {PARTICLES.map((p, i) => (
+                <span
+                    key={i}
+                    className="ap-hero-particle"
+                    style={{
+                        left: p.x,
+                        top: p.y,
+                        width: p.s,
+                        height: p.s,
+                        animationDelay: p.delay,
+                        animationDuration: p.dur,
+                    }}
+                />
+            ))}
+        </div>
+    );
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export default function AddProperty() {
-    const { type } = useParams();
     const navigate = useNavigate();
+    const { type = 'apartment' } = useParams();
     const { addProperty } = useProperties();
     const { user } = useAuth();
     const fileRef = useRef();
 
-    const config = PROPERTY_CONFIG[type];
+    const config = TYPE_CONFIG[type] || TYPE_CONFIG.apartment;
+    const { fields } = config;
+    const TypeIcon = config.icon;
 
     const [form, setForm] = useState({
-        type,
         title: '',
         price: '',
-        location: '',
-        area: '',
-        description: '',
+        locationText: '',
+        // Area fields
+        carpetArea: '',
+        plotArea: '',
+        builtUpArea: '',
+        // Bedroom / bathroom
         bhk: '2',
+        bathrooms: '2',
+        // Building
         floor: '',
         totalFloors: '',
+        // Property details
         furnishing: 'Semi-Furnished',
         facing: 'East',
         ageYears: '',
         maintenance: '',
-        plotArea: '',
-        garden: false,
-        pool: false,
-        floors: '',
-        parking: '',
-        dimensions: '',
-        zone: 'Residential',
-        cornerPlot: false,
-        roadWidth: '',
-        spaceType: 'Office',
-        cabins: '',
+        parking: 'Covered',
         washrooms: '',
-        powerLoad: '',
+        commercialType: 'Office Space',
+        plotDimensions: '',
+        approvalDetails: '',
+        // Extras
         amenities: [],
         images: [],
         youtube: '',
+        description: '',
+        // Map
+        lat: '17.3850',
+        lng: '78.4867',
     });
+
     const [submitted, setSubmitted] = useState(false);
+    const [toast, setToast] = useState({ visible: false, message: '' });
 
-    if (!config) {
-        return (
-            <div style={{ textAlign: 'center', padding: 60 }}>
-                <h2>Invalid property type</h2>
-                <button className="btn btn-primary" onClick={() => navigate('/properties')} style={{ marginTop: 16 }}>
-                    Go to Properties
-                </button>
-            </div>
-        );
-    }
-
-    const Icon = config.icon;
-    const fields = config.fields;
+    const showToast = (message) => setToast({ visible: true, message });
+    const closeToast = () => setToast({ visible: false, message: '' });
 
     const handleChange = (e) => {
-        const { name, value, type: t, checked } = e.target;
-        setForm(f => ({ ...f, [name]: t === 'checkbox' ? checked : value }));
+        const { name, value } = e.target;
+        setForm(f => ({ ...f, [name]: value }));
     };
 
     const toggleAmenity = (a) => {
@@ -120,7 +353,7 @@ export default function AddProperty() {
             ...f,
             amenities: f.amenities.includes(a)
                 ? f.amenities.filter(x => x !== a)
-                : [...f.amenities, a]
+                : [...f.amenities, a],
         }));
     };
 
@@ -134,292 +367,530 @@ export default function AddProperty() {
         setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }));
     };
 
+    const simulateMapClick = () => {
+        const randomLat = (17 + Math.random() * 0.5).toFixed(4);
+        const randomLng = (78 + Math.random() * 0.5).toFixed(4);
+        setForm(f => ({
+            ...f,
+            lat: randomLat,
+            lng: randomLng,
+            locationText: f.locationText || 'Hyderabad, Telangana',
+        }));
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        const defaultImg = {
-            apartment: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=400&q=80',
-            villa: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400&q=80',
-            plot: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&q=80',
-            house: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=400&q=80',
-            commercial: 'https://images.unsplash.com/photo-1497366216548-37526070297c?w=400&q=80',
-        };
+
+        // Custom validation — show toast for first missing required field
+        const requiredFields = REQUIRED_FIELDS[type] || REQUIRED_FIELDS.apartment;
+        for (const { key, label } of requiredFields) {
+            if (!form[key] || String(form[key]).trim() === '') {
+                showToast(`${label} is required`);
+                return;
+            }
+        }
+
+        const primaryArea = fields.carpetArea
+            ? form.carpetArea
+            : fields.builtUpArea
+            ? form.builtUpArea
+            : form.plotArea;
         addProperty({
             ...form,
+            type,
             price: Number(form.price),
-            area: Number(form.area),
-            images: form.images.length > 0 ? form.images : [defaultImg[type]],
+            area: Number(primaryArea) || 0,
+            images: form.images.length > 0 ? form.images : [config.defaultImg],
             agent: user?.role || 'admin',
         });
         setSubmitted(true);
     };
 
+    // ─── Success screen ──────────────────────────────────────────────────────
+
     if (submitted) {
         return (
             <div className="add-success fade-in">
                 <div className="add-success-card">
-                    <CheckCircle size={56} color="var(--success)" />
-                    <h2>Property Added Successfully!</h2>
-                    <p>Your {config.label} listing has been added to the portfolio.</p>
-                    <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                        <button className="btn btn-secondary" onClick={() => setSubmitted(false)}>Add Another</button>
-                        <button className="btn btn-primary" onClick={() => navigate('/properties')}>View Properties</button>
+                    <div className="success-icon-ring">
+                        <CheckCircle size={48} color="#0d6933" />
+                    </div>
+                    <h2 className="success-title">{config.successMsg}</h2>
+                    <p className="success-sub">{config.successSub}</p>
+                    <div className="success-actions">
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => {
+                                setSubmitted(false);
+                                setForm(f => ({ ...f, title: '', price: '', images: [], description: '' }));
+                            }}
+                        >
+                            Add Another {config.label}
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            style={{ background: '#0d6933', borderColor: '#0d6933' }}
+                            onClick={() => navigate('/properties')}
+                        >
+                            View Properties
+                        </button>
                     </div>
                 </div>
             </div>
         );
     }
 
+    // ─── Form ────────────────────────────────────────────────────────────────
+
     return (
-        <div className="add-property fade-in">
-            {/* Header */}
-            <div className="add-property-header" style={{ borderColor: config.color + '40' }}>
-                <div className="add-property-type-icon" style={{ background: config.color + '20', color: config.color }}>
-                    <Icon size={24} />
+        <div className="add-property fade-in" style={{ paddingBottom: 60 }}>
+
+            {/* Validation Toast */}
+            {toast.visible && <Toast message={toast.message} onClose={closeToast} />}
+
+            {/* ── Premium Hero Header ─────────────────────────────────── */}
+            <div
+                className="ap-hero-header"
+                style={{
+                    background: config.theme.heroBg,
+                    borderColor: config.theme.border,
+                    boxShadow: `0 1px 0 0 rgba(255,255,255,0.9) inset, 0 6px 32px -6px ${config.theme.iconGlow}`,
+                }}
+            >
+                {/* Floating sparkle particles */}
+                <ParticleField />
+
+                {/* Decorative watermark icon */}
+                <div
+                    className="ap-hero-watermark"
+                    aria-hidden="true"
+                    style={{ color: config.theme.watermark }}
+                >
+                    <TypeIcon size={160} />
                 </div>
-                <div>
-                    <h2 style={{ fontSize: '1.3rem', fontWeight: 700 }}>Add {config.label}</h2>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: 3 }}>{config.description}</p>
+
+                <div className="ap-hero-content">
+                    {/* Icon tile */}
+                    <div
+                        className="ap-hero-icon-wrap"
+                        style={{
+                            background: config.theme.iconBg,
+                            boxShadow: [
+                                `0 18px 44px -6px ${config.theme.iconGlow}`,
+                                `0 6px 16px -2px ${config.theme.iconGlow}`,
+                                `0 0 0 1.5px rgba(255,255,255,0.22) inset`,
+                                `0 2px 0 rgba(255,255,255,0.55) inset`,
+                                `0 -1px 0 rgba(0,0,0,0.18) inset`,
+                            ].join(', '),
+                        }}
+                    >
+                        <TypeIcon size={34} className="ap-hero-icon" />
+                    </div>
+
+                    {/* Text block */}
+                    <div className="ap-hero-text">
+                        <span
+                            className="ap-hero-badge"
+                            style={{
+                                background: config.theme.accentBg,
+                                color: config.theme.accentColor,
+                                border: `1px solid ${config.theme.accentBorder}`,
+                            }}
+                        >
+                            {config.label}
+                        </span>
+                        <h1 className="ap-hero-title">Add New {config.label}</h1>
+                        <p className="ap-hero-subtitle">{config.subtitle}</p>
+                    </div>
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit}>
-                <div className="add-property-body">
-                    {/* Section: Basic Info */}
-                    <div className="card add-section">
-                        <h3 className="add-section-title">Basic Information</h3>
-                        <div className="grid grid-2">
-                            {fields.includes('title') && (
-                                <FieldGroup label="Property Title *">
-                                    <input className="form-control" name="title" value={form.title} onChange={handleChange} placeholder={`e.g. Luxury ${config.label} in Banjara Hills`} required />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('location') && (
-                                <FieldGroup label="Location / Address *">
-                                    <input className="form-control" name="location" value={form.location} onChange={handleChange} placeholder="Area, City" required />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('price') && (
-                                <FieldGroup label="Price (₹) *">
-                                    <input className="form-control" type="number" name="price" value={form.price} onChange={handleChange} placeholder="e.g. 8500000" required min={1} />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('area') && (
-                                <FieldGroup label="Carpet / Built-up Area (sqft) *">
-                                    <input className="form-control" type="number" name="area" value={form.area} onChange={handleChange} placeholder="e.g. 1850" required min={1} />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('youtube') && (
-                                <FieldGroup label="YouTube Video URL">
-                                    <input className="form-control" name="youtube" value={form.youtube} onChange={handleChange} placeholder="e.g. https://www.youtube.com/watch?v=..." />
-                                </FieldGroup>
-                            )}
+            <form onSubmit={handleSubmit} className="premium-form-container" noValidate>
+
+                {/* ── Section 1: Basic Details ─────────────────────────────── */}
+                <div className="card premium-form-section">
+                    <div className="premium-section-header">
+                        <Info size={18} color="#0d6933" />
+                        <h3 className="premium-section-title">Basic Details</h3>
+                    </div>
+                    <div className="grid grid-2">
+                        <FieldGroup label="Property Title *">
+                            <input
+                                className="premium-input"
+                                name="title"
+                                value={form.title}
+                                onChange={handleChange}
+                                placeholder={`e.g. Premium ${config.label} in Banjara Hills`}
+                            />
+                        </FieldGroup>
+                        <FieldGroup label="Asking Price (₹) *">
+                            <input
+                                className="premium-input"
+                                type="number"
+                                name="price"
+                                value={form.price}
+                                onChange={handleChange}
+                                placeholder="e.g. 15000000"
+                                min={1}
+                            />
+                        </FieldGroup>
+                        <div style={{ gridColumn: '1 / -1' }}>
+                            <FieldGroup label="Location / Address *">
+                                <input
+                                    className="premium-input"
+                                    name="locationText"
+                                    value={form.locationText}
+                                    onChange={handleChange}
+                                    placeholder="e.g. Banjara Hills, Road No. 12, Hyderabad"
+                                />
+                            </FieldGroup>
                         </div>
                     </div>
-                    {/* Section: Property Specific */}
-                    <div className="card add-section">
-                        <h3 className="add-section-title">Property Details</h3>
-                        <div className="grid grid-3">
-                            {fields.includes('bhk') && (
-                                <FieldGroup label="BHK / Bedrooms">
-                                    <select className="form-control" name="bhk" value={form.bhk} onChange={handleChange}>
-                                        {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} BHK</option>)}
-                                    </select>
-                                </FieldGroup>
-                            )}
-                            {fields.includes('floor') && (
-                                <FieldGroup label="Floor Number">
-                                    <input className="form-control" type="number" name="floor" value={form.floor} onChange={handleChange} placeholder="e.g. 5" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('totalFloors') && (
-                                <FieldGroup label="Total Floors">
-                                    <input className="form-control" type="number" name="totalFloors" value={form.totalFloors} onChange={handleChange} placeholder="e.g. 12" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('furnishing') && (
-                                <FieldGroup label="Furnishing">
-                                    <select className="form-control" name="furnishing" value={form.furnishing} onChange={handleChange}>
-                                        <option>Unfurnished</option>
-                                        <option>Semi-Furnished</option>
-                                        <option>Fully Furnished</option>
-                                    </select>
-                                </FieldGroup>
-                            )}
-                            {fields.includes('facing') && (
-                                <FieldGroup label="Facing Direction">
-                                    <select className="form-control" name="facing" value={form.facing} onChange={handleChange}>
-                                        {['East', 'West', 'North', 'South', 'NE', 'NW', 'SE', 'SW'].map(d => <option key={d}>{d}</option>)}
-                                    </select>
-                                </FieldGroup>
-                            )}
-                            {fields.includes('ageYears') && (
-                                <FieldGroup label="Age of Property (years)">
-                                    <input className="form-control" type="number" name="ageYears" value={form.ageYears} onChange={handleChange} placeholder="0 = new" min={0} />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('maintenance') && (
-                                <FieldGroup label="Monthly Maintenance (₹)">
-                                    <input className="form-control" type="number" name="maintenance" value={form.maintenance} onChange={handleChange} placeholder="e.g. 4500" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('plotArea') && (
-                                <FieldGroup label="Plot Area (sqft)">
-                                    <input className="form-control" type="number" name="plotArea" value={form.plotArea} onChange={handleChange} placeholder="e.g. 6000" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('floors') && (
-                                <FieldGroup label="Number of Floors">
-                                    <input className="form-control" type="number" name="floors" value={form.floors} onChange={handleChange} placeholder="e.g. 3" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('parking') && (
-                                <FieldGroup label="Parking Slots">
-                                    <input className="form-control" type="number" name="parking" value={form.parking} onChange={handleChange} placeholder="e.g. 2" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('dimensions') && (
-                                <FieldGroup label="Plot Dimensions">
-                                    <input className="form-control" name="dimensions" value={form.dimensions} onChange={handleChange} placeholder="e.g. 15m x 20m" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('zone') && (
-                                <FieldGroup label="Zone Type">
-                                    <select className="form-control" name="zone" value={form.zone} onChange={handleChange}>
-                                        <option>Residential</option>
-                                        <option>Commercial</option>
-                                        <option>Industrial</option>
-                                        <option>Mixed Use</option>
-                                    </select>
-                                </FieldGroup>
-                            )}
-                            {fields.includes('roadWidth') && (
-                                <FieldGroup label="Road Width">
-                                    <input className="form-control" name="roadWidth" value={form.roadWidth} onChange={handleChange} placeholder="e.g. 30ft" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('spaceType') && (
-                                <FieldGroup label="Space Type">
-                                    <select className="form-control" name="spaceType" value={form.spaceType} onChange={handleChange}>
-                                        <option>Office</option>
-                                        <option>Retail</option>
-                                        <option>Warehouse</option>
-                                        <option>Showroom</option>
-                                        <option>Restaurant</option>
-                                    </select>
-                                </FieldGroup>
-                            )}
-                            {fields.includes('cabins') && (
-                                <FieldGroup label="Number of Cabins">
-                                    <input className="form-control" type="number" name="cabins" value={form.cabins} onChange={handleChange} placeholder="e.g. 10" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('washrooms') && (
-                                <FieldGroup label="Washrooms">
-                                    <input className="form-control" type="number" name="washrooms" value={form.washrooms} onChange={handleChange} placeholder="e.g. 4" />
-                                </FieldGroup>
-                            )}
-                            {fields.includes('powerLoad') && (
-                                <FieldGroup label="Power Load">
-                                    <input className="form-control" name="powerLoad" value={form.powerLoad} onChange={handleChange} placeholder="e.g. 100KW" />
-                                </FieldGroup>
-                            )}
-                        </div>
+                </div>
 
-                        {/* Boolean fields */}
-                        {(fields.includes('garden') || fields.includes('pool') || fields.includes('cornerPlot')) && (
-                            <div style={{ display: 'flex', gap: 20, marginTop: 16 }}>
-                                {fields.includes('garden') && (
-                                    <label className="checkbox-item">
-                                        <input type="checkbox" name="garden" checked={form.garden} onChange={handleChange} />
-                                        Garden / Lawn
-                                    </label>
-                                )}
-                                {fields.includes('pool') && (
-                                    <label className="checkbox-item">
-                                        <input type="checkbox" name="pool" checked={form.pool} onChange={handleChange} />
-                                        Swimming Pool
-                                    </label>
-                                )}
-                                {fields.includes('cornerPlot') && (
-                                    <label className="checkbox-item">
-                                        <input type="checkbox" name="cornerPlot" checked={form.cornerPlot} onChange={handleChange} />
-                                        Corner Plot
-                                    </label>
-                                )}
-                            </div>
+                {/* ── Section 2: Property Specifications ──────────────────── */}
+                <div className="card premium-form-section">
+                    <div className="premium-section-header">
+                        <TypeIcon size={18} color="#0d6933" />
+                        <h3 className="premium-section-title">{config.specTitle}</h3>
+                    </div>
+                    <div className="grid grid-3">
+
+                        {fields.carpetArea && (
+                            <FieldGroup label="Carpet / Built-up Area (sq.ft) *">
+                                <input className="premium-input" type="number" name="carpetArea" value={form.carpetArea} onChange={handleChange} placeholder="e.g. 1850" min={1} />
+                            </FieldGroup>
                         )}
-                    </div>
 
-                    {/* Amenities (Apartment only) */}
-                    {fields.includes('amenities') && (
-                        <div className="card add-section">
-                            <h3 className="add-section-title">Amenities</h3>
-                            <div className="checkbox-group">
-                                {AMENITY_OPTIONS.map(a => (
-                                    <label key={a} className={`checkbox-item ${form.amenities.includes(a) ? 'selected' : ''}`}>
-                                        <input type="checkbox" checked={form.amenities.includes(a)} onChange={() => toggleAmenity(a)} />
-                                        {a}
-                                    </label>
-                                ))}
-                            </div>
+                        {fields.plotArea && (
+                            <FieldGroup label={type === 'plot' ? 'Plot Area (sq.yd) *' : 'Plot Area (sq.yd)'}>
+                                <input className="premium-input" type="number" name="plotArea" value={form.plotArea} onChange={handleChange} placeholder="e.g. 200" min={1} />
+                            </FieldGroup>
+                        )}
+
+                        {fields.builtUpArea && (
+                            <FieldGroup label="Built-up Area (sq.ft)">
+                                <input className="premium-input" type="number" name="builtUpArea" value={form.builtUpArea} onChange={handleChange} placeholder="e.g. 2400" min={1} />
+                            </FieldGroup>
+                        )}
+
+                        {fields.bhk && (
+                            <FieldGroup label="Bedrooms (BHK)">
+                                <select className="premium-input" name="bhk" value={form.bhk} onChange={handleChange}>
+                                    {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} BHK</option>)}
+                                </select>
+                            </FieldGroup>
+                        )}
+
+                        {fields.bathrooms && (
+                            <FieldGroup label="Bathrooms">
+                                <select className="premium-input" name="bathrooms" value={form.bathrooms} onChange={handleChange}>
+                                    {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                                </select>
+                            </FieldGroup>
+                        )}
+
+                        {fields.floor && (
+                            <FieldGroup label="Floor Number">
+                                <input className="premium-input" type="number" name="floor" value={form.floor} onChange={handleChange} placeholder="e.g. 5" min={0} />
+                            </FieldGroup>
+                        )}
+
+                        {fields.totalFloors && (
+                            <FieldGroup label="Total Floors in Building">
+                                <input className="premium-input" type="number" name="totalFloors" value={form.totalFloors} onChange={handleChange} placeholder="e.g. 12" min={1} />
+                            </FieldGroup>
+                        )}
+
+                        {fields.furnishing && (
+                            <FieldGroup label="Furnishing Status">
+                                <select className="premium-input" name="furnishing" value={form.furnishing} onChange={handleChange}>
+                                    <option>Unfurnished</option>
+                                    <option>Semi-Furnished</option>
+                                    <option>Fully Furnished</option>
+                                </select>
+                            </FieldGroup>
+                        )}
+
+                        {fields.facing && (
+                            <FieldGroup label="Facing Direction">
+                                <select className="premium-input" name="facing" value={form.facing} onChange={handleChange}>
+                                    {FACING_OPTIONS.map(d => <option key={d}>{d}</option>)}
+                                </select>
+                            </FieldGroup>
+                        )}
+
+                        {fields.ageYears && (
+                            <FieldGroup label="Age of Property (Years)">
+                                <input className="premium-input" type="number" name="ageYears" value={form.ageYears} onChange={handleChange} placeholder="0 = Brand New" min={0} />
+                            </FieldGroup>
+                        )}
+
+                        {fields.maintenance && (
+                            <FieldGroup label="Monthly Maintenance (₹)">
+                                <input className="premium-input" type="number" name="maintenance" value={form.maintenance} onChange={handleChange} placeholder="e.g. 6000" min={0} />
+                            </FieldGroup>
+                        )}
+
+                        {fields.parking && (
+                            <FieldGroup label="Parking">
+                                <select className="premium-input" name="parking" value={form.parking} onChange={handleChange}>
+                                    <option>None</option>
+                                    <option>Open</option>
+                                    <option>Covered</option>
+                                    <option>Multi-Level</option>
+                                </select>
+                            </FieldGroup>
+                        )}
+
+                        {fields.washrooms && (
+                            <FieldGroup label="Washrooms">
+                                <select className="premium-input" name="washrooms" value={form.washrooms} onChange={handleChange}>
+                                    <option value="">Select</option>
+                                    {[1, 2, 3, 4, '5+'].map(n => <option key={n} value={n}>{n}</option>)}
+                                </select>
+                            </FieldGroup>
+                        )}
+
+                        {fields.commercialType && (
+                            <FieldGroup label="Commercial Type">
+                                <select className="premium-input" name="commercialType" value={form.commercialType} onChange={handleChange}>
+                                    {['Office Space', 'Retail Shop', 'Showroom', 'Warehouse', 'Industrial Unit', 'Co-working Space'].map(t => (
+                                        <option key={t}>{t}</option>
+                                    ))}
+                                </select>
+                            </FieldGroup>
+                        )}
+
+                        {fields.plotDimensions && (
+                            <FieldGroup label="Plot Dimensions">
+                                <input className="premium-input" name="plotDimensions" value={form.plotDimensions} onChange={handleChange} placeholder="e.g. 30×60 ft" />
+                            </FieldGroup>
+                        )}
+
+                        {fields.approvalDetails && (
+                            <FieldGroup label="Approval / Registration">
+                                <input className="premium-input" name="approvalDetails" value={form.approvalDetails} onChange={handleChange} placeholder="e.g. HMDA Approved, Clear Title" />
+                            </FieldGroup>
+                        )}
+
+                    </div>
+                </div>
+
+                {/* ── Section 3: Amenities (type-dependent) ───────────────── */}
+                {fields.amenities && (
+                    <div className="card premium-form-section">
+                        <div className="premium-section-header">
+                            <CheckCircle size={18} color="#0d6933" />
+                            <h3 className="premium-section-title">Premium Amenities</h3>
+                        </div>
+                        <div className="premium-checkbox-grid">
+                            {AMENITY_OPTIONS.map(a => (
+                                <label
+                                    key={a}
+                                    className={`premium-checkbox-pill ${form.amenities.includes(a) ? 'active' : ''}`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={form.amenities.includes(a)}
+                                        onChange={() => toggleAmenity(a)}
+                                        style={{ display: 'none' }}
+                                    />
+                                    <div className="pill-indicator"></div>
+                                    {a}
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Section 4: Property Images ───────────────────────────── */}
+                <div className="card premium-form-section">
+                    <div className="premium-section-header">
+                        <Upload size={18} color="#0d6933" />
+                        <h3 className="premium-section-title">Property Images</h3>
+                    </div>
+                    <div className="premium-upload-area" onClick={() => fileRef.current.click()}>
+                        <div className="upload-icon-circle">
+                            <Upload size={24} color="#f5b642" />
+                        </div>
+                        <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '1.05rem', marginTop: 16 }}>
+                            Click or Drag Images Here
+                        </div>
+                        <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: 6, fontWeight: 500 }}>
+                            JPG, PNG or WebP — multiple files allowed
+                        </div>
+                        <input
+                            ref={fileRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            style={{ display: 'none' }}
+                            onChange={handleImageChange}
+                        />
+                    </div>
+                    {form.images.length > 0 && (
+                        <div className="premium-image-gallery">
+                            {form.images.map((img, i) => (
+                                <div key={i} className="gallery-thumbnail">
+                                    <img src={img} alt={`Upload ${i + 1}`} />
+                                    <button
+                                        type="button"
+                                        className="btn-remove-image"
+                                        onClick={() => removeImage(i)}
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     )}
+                </div>
 
-                    {/* Images */}
-                    <div className="card add-section">
-                        <h3 className="add-section-title">Property Images</h3>
-                        <div className="image-upload-area" onClick={() => fileRef.current.click()}>
-                            <Upload size={28} style={{ marginBottom: 8, color: 'var(--gold)' }} />
-                            <div style={{ fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>Click to upload images</div>
-                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>JPG, PNG, WebP supported</div>
-                            <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }} onChange={handleImageChange} />
-                        </div>
-                        {form.images.length > 0 && (
-                            <div className="image-previews" style={{ marginTop: 12 }}>
-                                {form.images.map((img, i) => (
-                                    <div key={i} style={{ position: 'relative' }}>
-                                        <img src={img} alt="" className="image-preview" />
-                                        <button
-                                            type="button"
-                                            onClick={() => removeImage(i)}
-                                            style={{
-                                                position: 'absolute', top: -6, right: -6,
-                                                width: 20, height: 20, border: 'none',
-                                                borderRadius: '50%', background: 'var(--danger)',
-                                                color: '#fff', cursor: 'pointer', fontSize: 12,
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                            }}
-                                        >×</button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                {/* ── Section 5: YouTube Walkthrough ───────────────────────── */}
+                <div className="card premium-form-section">
+                    <div className="premium-section-header">
+                        <Youtube size={18} color="#EF4444" />
+                        <h3 className="premium-section-title">YouTube Walkthrough <span className="yt-optional-badge">Optional</span></h3>
                     </div>
-
-                    {/* Description */}
-                    <div className="card add-section">
-                        <h3 className="add-section-title">Description</h3>
-                        <div className="form-group">
-                            <textarea
-                                className="form-control"
-                                name="description"
-                                value={form.description}
-                                onChange={handleChange}
-                                placeholder={`Describe the ${config.label.toLowerCase()} in detail — location highlights, special features, connectivity, nearby landmarks...`}
-                                rows={5}
+                    <FieldGroup label="YouTube Video URL">
+                        <input
+                            className="premium-input"
+                            name="youtube"
+                            value={form.youtube}
+                            onChange={handleChange}
+                            placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..."
+                        />
+                    </FieldGroup>
+                    {getYoutubeId(form.youtube) && (
+                        <div className="yt-embed-wrapper">
+                            <iframe
+                                src={`https://www.youtube.com/embed/${getYoutubeId(form.youtube)}`}
+                                title="Property Walkthrough"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="yt-embed-frame"
                             />
                         </div>
+                    )}
+                </div>
+
+                {/* ── Section 7: Description ───────────────────────────────── */}
+                <div className="card premium-form-section">
+                    <div className="premium-section-header">
+                        <Info size={18} color="#0d6933" />
+                        <h3 className="premium-section-title">Description</h3>
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <textarea
+                            className="premium-input"
+                            name="description"
+                            value={form.description}
+                            onChange={handleChange}
+                            placeholder={`Describe this ${config.label.toLowerCase()} — highlight key features, nearby landmarks, connectivity, and unique selling points...`}
+                            rows={6}
+                        />
                     </div>
                 </div>
 
-                {/* Submit */}
-                <div className="add-property-submit">
-                    <button type="button" className="btn btn-secondary" onClick={() => navigate('/properties')}>Cancel</button>
-                    <button type="submit" className="btn btn-primary" style={{ minWidth: 160 }}>
-                        <CheckCircle size={16} />
-                        Publish {config.label}
+                {/* ── Section 6: Google Map Location Picker ────────────────── */}
+                <div className="card premium-form-section">
+                    <div className="premium-section-header" style={{ marginBottom: 6 }}>
+                        <MapPin size={18} color="#0d6933" />
+                        <h3 className="premium-section-title">Property Location</h3>
+                    </div>
+                    <p className="map-hint-text">
+                        Search for an address or click the map to pin the exact property location.
+                        Coordinates are stored for backend / map integration.
+                    </p>
+
+                    {/* Search bar */}
+                    <div className="map-search-bar">
+                        <Search size={18} color="#94a3b8" />
+                        <input
+                            type="text"
+                            className="map-search-input"
+                            placeholder="Search address, neighborhood, or landmark..."
+                            name="locationText"
+                            value={form.locationText}
+                            onChange={handleChange}
+                        />
+                        <button type="button" className="btn-locate-me" onClick={simulateMapClick}>
+                            <Navigation size={16} />
+                            Locate Me
+                        </button>
+                    </div>
+
+                    {/*
+                     * MAP CONTAINER
+                     * To integrate Google Maps API:
+                     *   1. Install: npm install @react-google-maps/api
+                     *   2. Wrap app with <LoadScript googleMapsApiKey="YOUR_KEY">
+                     *   3. Replace this div with <GoogleMap> + <Marker> components
+                     *   4. Use onClick event to capture lat/lng and update form state
+                     */}
+                    <div className="map-view-container" onClick={simulateMapClick}>
+                        <div className="map-background mock-google-map">
+                            <div className="map-overlay-instructions">
+                                Click anywhere on the map to pin the exact property location
+                            </div>
+                            {form.lat && (
+                                <div className="map-marker-pin" style={{ top: '50%', left: '50%' }}>
+                                    <div className="marker-bounce">
+                                        <MapPin size={32} color="#EF4444" fill="#EF4444" style={{ stroke: '#ffffff', strokeWidth: 1.5 }} />
+                                    </div>
+                                    <div className="marker-shadow"></div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Coordinates preview */}
+                    <div className="map-coordinates-grid">
+                        <div className="coord-box">
+                            <span className="coord-label">Selected Address</span>
+                            <span className="coord-value">{form.locationText || 'No address selected'}</span>
+                        </div>
+                        <div className="coord-box">
+                            <span className="coord-label">Latitude</span>
+                            <span className="coord-value">{form.lat || '—'}</span>
+                        </div>
+                        <div className="coord-box">
+                            <span className="coord-label">Longitude</span>
+                            <span className="coord-value">{form.lng || '—'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── Actions ──────────────────────────────────────────────── */}
+                <div className="premium-form-actions">
+                    <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => navigate('/properties')}
+                        style={{ padding: '14px 28px', fontSize: '0.95rem', fontWeight: 700 }}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="submit"
+                        className="btn btn-primary"
+                        style={{
+                            padding: '14px 36px',
+                            fontSize: '1rem',
+                            fontWeight: 700,
+                            background: '#0d6933',
+                            borderColor: '#0d6933',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                        }}
+                    >
+                        <CheckCircle size={20} />
+                        {config.publishLabel}
                     </button>
                 </div>
+
             </form>
         </div>
     );

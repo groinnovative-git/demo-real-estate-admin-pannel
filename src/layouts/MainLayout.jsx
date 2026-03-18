@@ -9,7 +9,7 @@ const SIDEBAR_COLLAPSED = 72;
 
 export default function MainLayout() {
     const { isAuthenticated } = useAuth();
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => window.innerWidth <= 1024);
     const location = useLocation();
 
     if (!isAuthenticated) {
@@ -23,6 +23,13 @@ export default function MainLayout() {
             className="app-shell"
             style={{ '--sidebar-width': `${sidebarWidth}px` }}
         >
+            {/* Mobile Overlay */}
+            {!sidebarCollapsed && (
+                <div 
+                    className="sidebar-mobile-overlay" 
+                    onClick={() => setSidebarCollapsed(true)}
+                />
+            )}
             <Sidebar
                 collapsed={sidebarCollapsed}
                 onToggle={() => setSidebarCollapsed(c => !c)}

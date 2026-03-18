@@ -935,3 +935,21 @@ tbody td .name-cell {
   border-radius: 999px;
   margin-bottom: 16px;
 }
+
+/* Mobile Sidebar Overlay */
+.sidebar-mobile-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 25, 35, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 799;
+  animation: fadeIn 0.3s ease;
+}
+
+@media (max-width: 768px) {
+  .sidebar-mobile-overlay {
+    display: block;
+  }
+}

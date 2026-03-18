@@ -8,7 +8,7 @@ import houseImg from '../assets/house.jpg';
 import famlandImg from '../assets/famland.jpg';
 import appartmentImg from '../assets/Appartment.jpg';
 import villaImg from '../assets/villa.jpg';
-import logoImg from '../assets/logo.png';
+import logoImg from '../assets/logo1.png';
 
 const SLIDES = [houseImg, famlandImg, appartmentImg, villaImg];
 const SLIDE_INTERVAL = 4000;
@@ -139,9 +139,9 @@ export default function Login() {
             <div className="login-card">
                 {/* Logo */}
                 <div className="login-logo">
-                    <img src={logoImg} alt="Star Properties" className="login-logo-img" />
-                    <h1 className="login-brand">Star Properties</h1>
-                    <p className="login-tagline">Real Estate Management</p>
+                    <div className="login-logo-badge">
+                        <img src={logoImg} alt="Star Properties" className="login-logo-img" />
+                    </div>
                 </div>
 
                 <h2 className="login-title">Welcome back</h2>
