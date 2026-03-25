@@ -1,31 +1,23 @@
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
     Search, Filter, MapPin, Bed, Maximize2, Edit2, Trash2, Eye,
-    Home, Building, TreePine, Landmark, Store, Plus, X, Check, AlertTriangle
+    Home, Building, TreePine, Landmark, Store, X, AlertTriangle, Loader
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { useAuth } from '../context/AuthContext';
+import { getErrorMessage } from '../utils/propertyPayloadMapper';
 import PropertyDetailModal from '../components/PropertyDetailModal';
 import EditPropertyModal from '../components/EditPropertyModal';
+import Toast from '../components/Toast';
 import './Properties.css';
 
 const TYPE_ICONS = {
-    apartment: Building,
-    villa: TreePine,
-    plot: Landmark,
-    house: Home,
-    commercial: Store,
+    apartment: Building, villa: TreePine, plot: Landmark, house: Home, commercial: Store,
 };
-
 const TYPE_LABELS = {
-    apartment: 'Apartment',
-    villa: 'Villa',
-    plot: 'Plot',
-    house: 'Individual House',
-    commercial: 'Commercial',
+    apartment: 'Apartment', villa: 'Villa', plot: 'Plot',
+    house: 'Individual House', commercial: 'Commercial',
 };
-
-
 
 function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
     const Icon = TYPE_ICONS[property.type] || Building;
@@ -36,22 +28,25 @@ function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
                     src={property.images?.[0]}
                     alt={property.title}
                     className="property-card-image"
-                    onError={(e) => { e.target.src = `https://placehold.co/400x200/1E2D3D/f5b642?text=${property.type[0].toUpperCase()}`; }}
+                    onError={(e) => {
+                        e.target.src = `https://placehold.co/400x200/1E2D3D/f5b642?text=${(property.type || 'P')[0].toUpperCase()}`;
+                    }}
                 />
                 <div className="property-card-type-badge">
                     <Icon size={11} />
-                    {TYPE_LABELS[property.type]}
+                    {TYPE_LABELS[property.type] || property.type}
                 </div>
-                <div className={`property-card-status-badge ${property.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
-                    {property.status === 'active' ? 'Active' : 'Sold'}
+                <div className={`property-card-status-badge ${property.status === 'sold' ? 'badge-danger' : 'badge-success'}`}>
+                    {property.status === 'sold' ? 'Sold' : 'Active'}
                 </div>
             </div>
             <div className="property-card-body">
                 <div className="property-card-title" title={property.title}>{property.title}</div>
                 <div className="property-card-loc"><MapPin size={12} />{property.location}</div>
                 <div className="property-card-meta">
-                    {property.bhk && <span><Bed size={12} /> {property.bhk} BHK</span>}
-                    {property.area && <span><Maximize2 size={12} /> {property.area} sqft</span>}
+                    {property.bhk > 0 && <span><Bed size={12} /> {property.bhk} BHK</span>}
+                    {property.area > 0 && <span><Maximize2 size={12} /> {property.area} sqft</span>}
+                    {property.loanSupport && <span className="property-card-loan-badge">Loan ✓</span>}
                 </div>
             </div>
             <div className="property-card-actions">
@@ -71,7 +66,7 @@ function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
     );
 }
 
-function ConfirmDeleteModal({ property, onConfirm, onClose }) {
+function ConfirmDeleteModal({ property, onConfirm, onClose, loading }) {
     return (
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal confirm-dialog" onClick={e => e.stopPropagation()}>
@@ -83,8 +78,11 @@ function ConfirmDeleteModal({ property, onConfirm, onClose }) {
                     </p>
                 </div>
                 <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-                    <button className="btn btn-danger" onClick={onConfirm}><Trash2 size={14} />Delete</button>
+                    <button className="btn btn-secondary" onClick={onClose} disabled={loading}>Cancel</button>
+                    <button className="btn btn-danger" onClick={onConfirm} disabled={loading}>
+                        {loading ? <Loader size={14} className="spin" /> : <Trash2 size={14} />}
+                        {loading ? 'Deleting...' : 'Delete'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -92,37 +90,57 @@ function ConfirmDeleteModal({ property, onConfirm, onClose }) {
 }
 
 export default function Properties() {
-    const { activeProperties, soldProperties, deleteProperty } = useProperties();
-    const { isAdmin } = useAuth();
+    const {
+        activeProperties, soldProperties, deleteProperty,
+        loading: listLoading, error: listError,
+    } = useProperties();
+    const { canDelete } = useAuth();
 
-    const [activeTab, setActiveTab] = useState('active');
-    const [search, setSearch] = useState('');
-    const [filterType, setFilterType] = useState('');
-    const [viewProperty, setViewProperty] = useState(null);
-    const [editProperty, setEditProperty] = useState(null);
-    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [activeTab,     setActiveTab]     = useState('active');
+    const [search,        setSearch]        = useState('');
+    const [filterType,    setFilterType]    = useState('');
+    const [viewProperty,  setViewProperty]  = useState(null);
+    const [editProperty,  setEditProperty]  = useState(null);
+    const [deleteTarget,  setDeleteTarget]  = useState(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
+    const [toast,         setToast]         = useState({ visible: false, message: '', type: 'error' });
+
+    const showToast  = (message, type = 'error') => setToast({ visible: true, message, type });
+    const closeToast = () => setToast({ visible: false, message: '', type: 'error' });
 
     const source = activeTab === 'active' ? activeProperties : soldProperties;
 
-    const filtered = useMemo(() => {
-        return source.filter(p => {
+    const filtered = useMemo(() =>
+        source.filter(p => {
             const matchSearch = !search ||
-                p.title.toLowerCase().includes(search.toLowerCase()) ||
-                p.location.toLowerCase().includes(search.toLowerCase());
-            const matchType = !filterType || p.type === filterType;
-            return matchSearch && matchType;
-        });
-    }, [source, search, filterType]);
+                (p.title    || '').toLowerCase().includes(search.toLowerCase()) ||
+                (p.location || '').toLowerCase().includes(search.toLowerCase());
+            return matchSearch && (!filterType || p.type === filterType);
+        }),
+    [source, search, filterType]);
 
-    const handleDelete = () => {
-        if (deleteTarget) {
-            deleteProperty(deleteTarget.id);
+    const handleDelete = async () => {
+        if (!deleteTarget) return;
+        setDeleteLoading(true);
+        try {
+            await deleteProperty(deleteTarget.id);
             setDeleteTarget(null);
+            showToast('Property deleted successfully.', 'success');
+        } catch (err) {
+            showToast(getErrorMessage(err), 'error');
+            setDeleteTarget(null);
+        } finally {
+            setDeleteLoading(false);
         }
     };
 
     return (
         <div className="properties-page fade-in">
+
+            {toast.visible && (
+                <Toast message={toast.message} type={toast.type} onClose={closeToast} />
+            )}
+
             {/* Tabs */}
             <div className="properties-header">
                 <div className="tabs" style={{ width: 360 }}>
@@ -179,18 +197,38 @@ export default function Properties() {
                     </button>
                 )}
                 <div style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {filtered.length} property{filtered.length !== 1 ? 'ies' : 'y'}
+                    {filtered.length} propert{filtered.length !== 1 ? 'ies' : 'y'}
                 </div>
             </div>
 
-            {/* Grid */}
-            {filtered.length === 0 ? (
+            {/* Loading state */}
+            {listLoading && (
+                <div className="empty-state">
+                    <Loader size={40} className="spin" style={{ color: '#0d6933' }} />
+                    <p style={{ marginTop: 12 }}>Loading properties...</p>
+                </div>
+            )}
+
+            {/* Error state */}
+            {!listLoading && listError && (
+                <div className="empty-state">
+                    <AlertTriangle size={40} color="var(--danger)" />
+                    <h3>Failed to load properties</h3>
+                    <p>{listError}</p>
+                </div>
+            )}
+
+            {/* Empty state */}
+            {!listLoading && !listError && filtered.length === 0 && (
                 <div className="empty-state">
                     <Building size={48} />
                     <h3>No properties found</h3>
                     <p>Try adjusting your search or filters</p>
                 </div>
-            ) : (
+            )}
+
+            {/* Grid */}
+            {!listLoading && !listError && filtered.length > 0 && (
                 <div className="properties-grid">
                     {filtered.map(p => (
                         <PropertyCard
@@ -199,20 +237,29 @@ export default function Properties() {
                             onView={setViewProperty}
                             onEdit={setEditProperty}
                             onDelete={setDeleteTarget}
-                            isAdmin={isAdmin}
+                            isAdmin={canDelete}
                         />
                     ))}
                 </div>
             )}
 
             {/* Modals */}
-            {viewProperty && <PropertyDetailModal property={viewProperty} onClose={() => setViewProperty(null)} />}
-            {editProperty && <EditPropertyModal property={editProperty} onClose={() => setEditProperty(null)} />}
+            {viewProperty && (
+                <PropertyDetailModal property={viewProperty} onClose={() => setViewProperty(null)} />
+            )}
+            {editProperty && (
+                <EditPropertyModal
+                    property={editProperty}
+                    onClose={() => setEditProperty(null)}
+                    onSaved={() => { setEditProperty(null); showToast('Property updated successfully.', 'success'); }}
+                />
+            )}
             {deleteTarget && (
                 <ConfirmDeleteModal
                     property={deleteTarget}
                     onConfirm={handleDelete}
-                    onClose={() => setDeleteTarget(null)}
+                    onClose={() => !deleteLoading && setDeleteTarget(null)}
+                    loading={deleteLoading}
                 />
             )}
         </div>

@@ -1,0 +1,269 @@
+/* ============================================================
+   PropertyLocationEmbed  —  ple- prefix
+   ============================================================ */
+
+/* ── Root ── */
+.ple-root {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px;
+    font-family: inherit;
+}
+
+/* ── Header ── */
+.ple-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.ple-icon-tile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(22, 163, 74, 0.25);
+}
+
+.ple-header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.ple-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #111827;
+    letter-spacing: -0.01em;
+}
+
+.ple-subtitle {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #6b7280;
+    line-height: 1.4;
+}
+
+.ple-subtitle strong {
+    color: #374151;
+}
+
+/* ── Input zone ── */
+.ple-input-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ple-label {
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.ple-textarea {
+    width: 100%;
+    resize: vertical;
+    padding: 12px 14px;
+    font-family: 'Fira Code', 'Cascadia Code', 'Consolas', 'Menlo', monospace;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: #1f2937;
+    background: #fff;
+    border: 1.5px solid #d1d5db;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.18s, box-shadow 0.18s;
+    box-sizing: border-box;
+    min-height: 96px;
+}
+
+.ple-textarea:focus {
+    border-color: #16a34a;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+}
+
+.ple-textarea--error {
+    border-color: #dc2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.10) !important;
+}
+
+.ple-textarea::placeholder {
+    color: #9ca3af;
+    font-family: inherit;
+}
+
+/* Error bar */
+.ple-error-bar {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 9px 13px;
+    border-radius: 8px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.ple-error-bar svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+/* ── Actions ── */
+.ple-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ple-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 20px;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: background 0.18s, color 0.18s, border-color 0.18s,
+        box-shadow 0.18s, opacity 0.18s, transform 0.12s;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.ple-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.ple-btn:not(:disabled):active {
+    transform: translateY(1px);
+}
+
+/* Primary — green */
+.ple-btn--primary {
+    background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+    color: #fff;
+    box-shadow: 0 3px 10px rgba(22, 163, 74, 0.22);
+}
+
+.ple-btn--primary:not(:disabled):hover {
+    background: linear-gradient(135deg, #15803d 0%, #16a34a 100%);
+    box-shadow: 0 5px 16px rgba(22, 163, 74, 0.35);
+}
+
+/* Outline — clear button */
+.ple-btn--outline {
+    background: transparent;
+    color: #6b7280;
+    border-color: #d1d5db;
+}
+
+.ple-btn--outline:not(:disabled):hover {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fca5a5;
+}
+
+/* ── Map container ── */
+.ple-map-container {
+    width: 100%;
+    height: 380px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1.5px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+.ple-map-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+}
+
+/* Empty state */
+.ple-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+    text-align: center;
+    padding: 24px;
+}
+
+.ple-empty-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 58px;
+    height: 58px;
+    border-radius: 50%;
+    background: #f3f4f6;
+    color: #d1d5db;
+    margin-bottom: 4px;
+}
+
+.ple-empty-title {
+    margin: 0;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.ple-empty-sub {
+    margin: 0;
+    font-size: 0.78rem;
+    color: #9ca3af;
+    line-height: 1.55;
+    max-width: 240px;
+}
+
+/* ── Responsive — tablet (≤ 768px) ── */
+@media (max-width: 768px) {
+    .ple-root {
+        padding: 18px;
+        gap: 14px;
+    }
+
+    .ple-map-container {
+        height: 300px;
+    }
+}
+
+/* ── Responsive — mobile (≤ 480px) ── */
+@media (max-width: 480px) {
+    .ple-root {
+        padding: 14px;
+        gap: 12px;
+    }
+
+    .ple-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .ple-btn {
+        justify-content: center;
+    }
+
+    .ple-map-container {
+        height: 240px;
+    }
+}

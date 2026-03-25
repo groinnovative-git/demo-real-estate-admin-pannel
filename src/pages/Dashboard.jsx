@@ -8,7 +8,7 @@ import {
     TrendingUp, TrendingDown, Phone, Mail, Clock, Calendar
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
-import { dashboardStats } from '../data/mockData';
+import { chartMonthlyData, totalVisitors } from '../data/mockData';
 import './Dashboard.css';
 
 const GRADIENTS = {
@@ -52,9 +52,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Dashboard() {
     const { properties, activeProperties, soldProperties, leads } = useProperties();
-    const { monthlyData, totalVisitors } = dashboardStats;
-
-    // Calculate property type distribution
+    // Calculate property type distribution from real API data
     const propertyTypeCounts = properties.reduce((acc, prop) => {
         acc[prop.type] = (acc[prop.type] || 0) + 1;
         return acc;
@@ -64,15 +62,15 @@ export default function Dashboard() {
         name: name.charAt(0).toUpperCase() + name.slice(1),
         value,
         color: name === 'apartment' ? '#86c127' :
-               name === 'villa' ? '#f5b642' :
-               name === 'plot' ? '#3B82F6' :
-               name === 'house' ? '#F59E0B' : '#EF4444'
+               name === 'villa'     ? '#f5b642' :
+               name === 'plot'      ? '#3B82F6' :
+               name === 'house'     ? '#F59E0B' : '#EF4444',
     }));
 
-    // Data for Sold Out Properties
-    const soldData = monthlyData.map(d => ({
+    // Chart data — static monthly trend (no backend endpoint for this)
+    const soldData = chartMonthlyData.map(d => ({
         month: d.month,
-        sold: Math.floor(d.listings * 0.6)
+        sold: Math.floor(d.listings * 0.6),
     }));
 
     const stats = [

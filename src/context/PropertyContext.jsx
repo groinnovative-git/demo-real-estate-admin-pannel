@@ -1,10 +1,25 @@
-import React, { createContext, useContext, useReducer } from 'react';
-import { mockProperties, mockLeads } from '../data/mockData';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { mockLeads } from '../data/mockData';
+import * as propertyApi from '../api/propertyApi';
+import { normalizeProperty } from '../utils/propertyPayloadMapper';
 
 const PropertyContext = createContext(null);
 
+const initialState = {
+    properties: [],
+    leads:      mockLeads,
+    loading:    false,
+    error:      null,
+};
+
 function propertyReducer(state, action) {
     switch (action.type) {
+        case 'SET_LOADING':
+            return { ...state, loading: action.payload };
+        case 'SET_ERROR':
+            return { ...state, error: action.payload, loading: false };
+        case 'SET_PROPERTIES':
+            return { ...state, properties: action.payload, loading: false, error: null };
         case 'ADD_PROPERTY':
             return { ...state, properties: [action.payload, ...state.properties] };
         case 'UPDATE_PROPERTY':
@@ -29,46 +44,61 @@ function propertyReducer(state, action) {
 }
 
 export function PropertyProvider({ children }) {
-    const [state, dispatch] = useReducer(propertyReducer, {
-        properties: mockProperties,
-        leads: mockLeads,
-    });
+    const [state, dispatch] = useReducer(propertyReducer, initialState);
 
-    const addProperty = (property) => {
-        const newProp = {
-            ...property,
-            id: Date.now(),
-            status: 'active',
-            listedDate: new Date().toISOString().split('T')[0],
-        };
-        dispatch({ type: 'ADD_PROPERTY', payload: newProp });
+    useEffect(() => {
+        fetchProperties();
+    }, []);
+
+    const fetchProperties = async () => {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        try {
+            const response = await propertyApi.getAllProperties();
+            const list     = Array.isArray(response.data) ? response.data : [];
+            const normalized = list.map(normalizeProperty).filter(p => p.isActive !== false);
+            dispatch({ type: 'SET_PROPERTIES', payload: normalized });
+        } catch {
+            dispatch({ type: 'SET_ERROR', payload: 'Failed to load properties.' });
+        }
     };
 
-    const updateProperty = (property) => {
-        dispatch({ type: 'UPDATE_PROPERTY', payload: property });
+    const addProperty = async (apiPayload) => {
+        const response   = await propertyApi.addProperty(apiPayload);
+        const normalized = normalizeProperty(response.data);
+        dispatch({ type: 'ADD_PROPERTY', payload: normalized });
+        return normalized;
     };
 
-    const deleteProperty = (id) => {
-        dispatch({ type: 'DELETE_PROPERTY', payload: id });
+    const updateProperty = async (apiPayload) => {
+        await propertyApi.updateProperty(apiPayload);
+        await fetchProperties();
+    };
+
+    const deleteProperty = async (id) => {
+        await propertyApi.deleteProperty(id);
+        await fetchProperties();
     };
 
     const updateLead = (lead) => {
         dispatch({ type: 'UPDATE_LEAD', payload: lead });
     };
 
-    const activeProperties = state.properties.filter(p => p.status === 'active');
-    const soldProperties = state.properties.filter(p => p.status === 'sold');
+    const activeProperties = state.properties.filter(p => p.status !== 'sold');
+    const soldProperties   = state.properties.filter(p => p.status === 'sold');
 
     return (
         <PropertyContext.Provider value={{
-            properties: state.properties,
-            leads: state.leads,
+            properties:       state.properties,
+            leads:            state.leads,
+            loading:          state.loading,
+            error:            state.error,
             activeProperties,
             soldProperties,
             addProperty,
             updateProperty,
             deleteProperty,
             updateLead,
+            fetchProperties,
         }}>
             {children}
         </PropertyContext.Provider>

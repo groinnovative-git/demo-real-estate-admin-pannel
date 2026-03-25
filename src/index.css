@@ -364,9 +364,23 @@ textarea.form-control {
   display: grid;
 }
 
+.grid-1 {
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
 .grid-2 {
   grid-template-columns: repeat(2, 1fr);
   gap: 16px;
+}
+
+/* Spinner animation — used by Loader icon and login-spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
 }
 
 .grid-3 {
@@ -632,9 +646,9 @@ tbody td .name-cell {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
-  width: 90%;
-  max-width: 720px;
-  max-height: 90vh;
+  width: 94%;
+  max-width: 980px;
+  max-height: 92vh;
   overflow-y: auto;
   animation: slideUp 0.25s ease;
 }
@@ -952,4 +966,91 @@ tbody td .name-cell {
   .sidebar-mobile-overlay {
     display: block;
   }
+}
+
+/* ── Loan Support Toggle Switch (global reusable) ────────────────────────── */
+.loan-toggle-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+}
+
+.loan-toggle-switch {
+  position: relative;
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  background: #d1d5db;
+  border: none;
+  cursor: pointer;
+  transition: background 0.22s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.loan-toggle-switch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.25);
+}
+
+.loan-toggle-switch--on {
+  background: #16a34a;
+}
+
+.loan-toggle-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.22s;
+  display: block;
+  pointer-events: none;
+}
+
+.loan-toggle-switch--on .loan-toggle-thumb {
+  transform: translateX(22px);
+}
+
+.loan-toggle-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* ── Property Type prefill display field ─────────────────────────────────── */
+.property-type-display {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1.5px solid #bbf7d0;
+  border-radius: 10px;
+  color: #15803d;
+  font-weight: 700;
+  font-size: 0.875rem;
+  user-select: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ── Loan badge on property cards ────────────────────────────────────────── */
+.property-card-loan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
