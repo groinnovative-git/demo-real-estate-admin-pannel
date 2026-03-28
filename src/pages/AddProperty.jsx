@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     Upload, X, CheckCircle, Building,
-    Info, Home, Map, Store, Castle
+    Info, Home, Map, Store, Castle, Leaf
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { buildPropertyFormData, getErrorMessage } from '../utils/propertyPayloadMapper';
@@ -44,6 +44,7 @@ const TYPE_CONFIG = {
         fields: {
             carpetArea: true, bhk: true, floor: true, totalFloors: true,
             furnishing: true, facing: true, ageYears: true, maintenance: true, amenities: true,
+            apartmentSubType: true, approval: true,
         },
     },
     villa: {
@@ -62,6 +63,7 @@ const TYPE_CONFIG = {
         fields: {
             plotArea: true, builtUpArea: true, bhk: true, bathrooms: true,
             furnishing: true, facing: true, ageYears: true, amenities: true,
+            approval: true,
         },
     },
     plot: {
@@ -77,7 +79,7 @@ const TYPE_CONFIG = {
             iconGlow: 'rgba(15, 118, 110, 0.55)', accentColor: '#0f766e',
             accentBg: 'rgba(15, 118, 110, 0.08)', accentBorder: 'rgba(15, 118, 110, 0.22)', watermark: '#0f766e',
         },
-        fields: { plotArea: true, facing: true, plotDimensions: true, approvalDetails: true, amenities: false },
+        fields: { plotArea: true, facing: true, plotDimensions: true, approvalDetails: true, amenities: true, plotSubType: true },
     },
     house: {
         label: 'Individual House', icon: Home,
@@ -113,6 +115,25 @@ const TYPE_CONFIG = {
         fields: {
             builtUpArea: true, commercialType: true, floor: true, totalFloors: true,
             furnishing: true, washrooms: true, ageYears: true, amenities: true,
+            facing: true, approval: true, roadAccess: true, floorDetails: true,
+        },
+    },
+    farmland: {
+        label: 'Farm Land', icon: Leaf,
+        subtitle: 'Create an agricultural farm land listing for the portfolio.',
+        specTitle: 'Farm Land Specifications',
+        successMsg: 'Farm Land Listed Successfully!',
+        successSub: 'The farm land has been securely added to your portfolio.',
+        publishLabel: 'Publish Farm Land Listing',
+        theme: {
+            heroBg: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 50%, #d1fae5 100%)',
+            border: '#6ee7b7', iconBg: 'linear-gradient(150deg, #064e3b 0%, #059669 42%, #34d399 100%)',
+            iconGlow: 'rgba(5, 150, 105, 0.55)', accentColor: '#065f46',
+            accentBg: 'rgba(5, 150, 105, 0.09)', accentBorder: 'rgba(5, 150, 105, 0.22)', watermark: '#059669',
+        },
+        fields: {
+            totalLandArea: true, pricePerAcre: true, landType: true,
+            borewell: true, ebConnection: true, roadAccess: true, approval: true,
         },
     },
 };
@@ -147,6 +168,12 @@ const REQUIRED_FIELDS = {
         { key: 'price',       label: 'Asking Price' },
         { key: 'location',    label: 'Location' },
         { key: 'builtUpArea', label: 'Built-up Area' },
+    ],
+    farmland: [
+        { key: 'title',         label: 'Property Title' },
+        { key: 'location',      label: 'Location' },
+        { key: 'totalLandArea', label: 'Total Land Area' },
+        { key: 'price',         label: 'Total Price' },
     ],
 };
 
@@ -214,12 +241,23 @@ export default function AddProperty() {
         floor: '', totalFloors: '',
         furnishing: 'Semi-Furnished', facing: 'East',
         ageYears: '', maintenance: '', washrooms: '',
-        commercialType: 'Office Space',
+        commercialType: 'Shop',
         plotDimensions: '', approvalDetails: '',
         amenities: [], images: [], description: '',
         shortVideoUrl: '', fullVideoUrl: '',
         mapEmbedSrc: '',
         loanSupport: false,
+        // ── New PDF fields ──
+        apartmentSubType: 'Apartment',
+        plotSubType: 'Residential',
+        approval: '',
+        totalLandArea: '',
+        pricePerAcre: '',
+        landType: 'Dry Land',
+        floorDetails: '',
+        borewell: false,
+        ebConnection: false,
+        roadAccess: false,
     });
     const [imageFiles, setImageFiles] = useState([]);
 
@@ -526,9 +564,9 @@ export default function AddProperty() {
                             </FieldGroup>
                         )}
                         {fields.commercialType && (
-                            <FieldGroup label="Commercial Type">
+                            <FieldGroup label="Property Sub-Type">
                                 <select className="premium-input" name="commercialType" value={form.commercialType} onChange={handleChange}>
-                                    {['Office Space', 'Retail Shop', 'Showroom', 'Warehouse', 'Industrial Unit', 'Co-working Space'].map(t => (
+                                    {['Shop', 'Office Space', 'Showroom', 'Complex'].map(t => (
                                         <option key={t}>{t}</option>
                                     ))}
                                 </select>
@@ -542,6 +580,94 @@ export default function AddProperty() {
                         {fields.approvalDetails && (
                             <FieldGroup label="Approval / Registration">
                                 <input className="premium-input" name="approvalDetails" value={form.approvalDetails} onChange={handleChange} placeholder="e.g. HMDA Approved, Clear Title" />
+                            </FieldGroup>
+                        )}
+
+                        {/* ── New PDF fields ── */}
+                        {fields.apartmentSubType && (
+                            <FieldGroup label="Apartment Sub-Type">
+                                <select className="premium-input" name="apartmentSubType" value={form.apartmentSubType} onChange={handleChange}>
+                                    <option>Apartment</option>
+                                    <option>Flat</option>
+                                </select>
+                            </FieldGroup>
+                        )}
+                        {fields.plotSubType && (
+                            <FieldGroup label="Plot Type">
+                                <select className="premium-input" name="plotSubType" value={form.plotSubType} onChange={handleChange}>
+                                    <option>Residential</option>
+                                    <option>Commercial</option>
+                                </select>
+                            </FieldGroup>
+                        )}
+                        {fields.totalLandArea && (
+                            <FieldGroup label="Total Land Area">
+                                <input className="premium-input" name="totalLandArea" value={form.totalLandArea} onChange={handleChange} placeholder="e.g. 5 Acres / 2 Hectares" />
+                            </FieldGroup>
+                        )}
+                        {fields.pricePerAcre && (
+                            <FieldGroup label="Price per Acre (₹)">
+                                <input className="premium-input" type="number" name="pricePerAcre" value={form.pricePerAcre} onChange={handleChange} placeholder="e.g. 500000" min={1} />
+                            </FieldGroup>
+                        )}
+                        {fields.landType && (
+                            <FieldGroup label="Land Type">
+                                <select className="premium-input" name="landType" value={form.landType} onChange={handleChange}>
+                                    <option>Dry Land</option>
+                                    <option>Wet Land</option>
+                                </select>
+                            </FieldGroup>
+                        )}
+                        {fields.floorDetails && (
+                            <FieldGroup label="Floor Details">
+                                <input className="premium-input" name="floorDetails" value={form.floorDetails} onChange={handleChange} placeholder="e.g. Ground + 2 Floors" />
+                            </FieldGroup>
+                        )}
+                        {fields.approval && (
+                            <FieldGroup label="Approval">
+                                <select className="premium-input" name="approval" value={form.approval} onChange={handleChange}>
+                                    <option value="">Select Approval</option>
+                                    <option>DTCP Approved</option>
+                                    <option>RERA Approved</option>
+                                    <option>DTCP &amp; RERA Approved</option>
+                                    <option>Not Available</option>
+                                </select>
+                            </FieldGroup>
+                        )}
+                        {fields.borewell && (
+                            <FieldGroup label="Borewell">
+                                <div className="loan-toggle-field">
+                                    <button type="button" role="switch" aria-checked={form.borewell}
+                                        className={`loan-toggle-switch${form.borewell ? ' loan-toggle-switch--on' : ''}`}
+                                        onClick={() => setForm(f => ({ ...f, borewell: !f.borewell }))}>
+                                        <span className="loan-toggle-thumb" />
+                                    </button>
+                                    <span className="loan-toggle-label">{form.borewell ? 'Available' : 'Not Available'}</span>
+                                </div>
+                            </FieldGroup>
+                        )}
+                        {fields.ebConnection && (
+                            <FieldGroup label="EB Connection">
+                                <div className="loan-toggle-field">
+                                    <button type="button" role="switch" aria-checked={form.ebConnection}
+                                        className={`loan-toggle-switch${form.ebConnection ? ' loan-toggle-switch--on' : ''}`}
+                                        onClick={() => setForm(f => ({ ...f, ebConnection: !f.ebConnection }))}>
+                                        <span className="loan-toggle-thumb" />
+                                    </button>
+                                    <span className="loan-toggle-label">{form.ebConnection ? 'Available' : 'Not Available'}</span>
+                                </div>
+                            </FieldGroup>
+                        )}
+                        {fields.roadAccess && (
+                            <FieldGroup label="Road Access for Vehicles">
+                                <div className="loan-toggle-field">
+                                    <button type="button" role="switch" aria-checked={form.roadAccess}
+                                        className={`loan-toggle-switch${form.roadAccess ? ' loan-toggle-switch--on' : ''}`}
+                                        onClick={() => setForm(f => ({ ...f, roadAccess: !f.roadAccess }))}>
+                                        <span className="loan-toggle-thumb" />
+                                    </button>
+                                    <span className="loan-toggle-label">{form.roadAccess ? 'Available' : 'Not Available'}</span>
+                                </div>
                             </FieldGroup>
                         )}
                     </div>

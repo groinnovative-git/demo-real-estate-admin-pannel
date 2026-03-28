@@ -7,6 +7,7 @@ import Dashboard from './pages/Dashboard';
 import Properties from './pages/Properties';
 import Leads from './pages/Leads';
 import AddProperty from './pages/AddProperty';
+import CredentialManagement from './pages/CredentialManagement';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="properties" element={<Properties />} />
             <Route path="leads" element={<Leads />} />
             <Route path="add-property/:type" element={<AddProperty />} />
+            <Route path="credentials" element={<CredentialManagement />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

@@ -8,6 +8,8 @@ const PAGE_TITLES = {
     '/dashboard': { title: 'Dashboard', sub: 'Overview of your real estate portfolio' },
     '/properties': { title: 'Properties', sub: 'Manage active and sold properties' },
     '/leads': { title: 'Leads', sub: 'Customer enquiries from contact page' },
+    '/credentials': { title: 'Login Credentials', sub: 'Manage default login accounts for each role' },
+    '/add-property': { title: 'Add Property', sub: 'Fill in property details' },
 };
 
 export default function Header({ sidebarCollapsed, onToggleSidebar }) {
@@ -16,7 +18,7 @@ export default function Header({ sidebarCollapsed, onToggleSidebar }) {
 
     const path = location.pathname;
     const pageKey = Object.keys(PAGE_TITLES).find(k => path.startsWith(k));
-    const pageInfo = PAGE_TITLES[pageKey] || { title: 'Add Property', sub: 'Fill in property details' };
+    const pageInfo = PAGE_TITLES[pageKey] || { title: '', sub: '' };
 
     return (
         <header className="header">

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, Users, ChevronDown, ChevronRight,
-    LogOut, Building, Home, TreePine, Store, Landmark, Plus, Building2
+    LogOut, Building, Home, TreePine, Store, Landmark, Plus, Building2, KeyRound, Leaf
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
@@ -15,13 +15,18 @@ const PROPERTY_TYPES = [
     { id: 'plot', label: 'Plot', icon: Landmark },
     { id: 'house', label: 'Individual House', icon: Home },
     { id: 'commercial', label: 'Commercial Space', icon: Store },
+    { id: 'farmland', label: 'Farm Land', icon: Leaf },
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {
-    const { user, logout, isAdmin } = useAuth();
+    const { user, logout, isAdmin, isSuperAdmin, isManager } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
     const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
     const [addOpen, setAddOpen] = useState(false);
+
+    // True whenever any /add-property/* child is the active route
+    const isAddPropertyActive = location.pathname.startsWith('/add-property');
     const popoverRef = useRef(null);
     const triggerRef = useRef(null);
 
@@ -52,6 +57,13 @@ export default function Sidebar({ collapsed, onToggle }) {
     useEffect(() => {
         setAddOpen(false);
     }, [collapsed]);
+
+    // Auto-expand when navigating to any add-property child (including page refresh)
+    useEffect(() => {
+        if (location.pathname.startsWith('/add-property')) {
+            setAddOpen(true);
+        }
+    }, [location.pathname]);
 
     const handleLogout = () => {
         logout();
@@ -86,6 +98,13 @@ export default function Sidebar({ collapsed, onToggle }) {
                     {showFull && <span>Leads</span>}
                 </NavLink>
 
+                {(isSuperAdmin || isAdmin || isManager) && (
+                    <NavLink to="/credentials" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} title="Login Credentials">
+                        <KeyRound size={20} />
+                        {showFull && <span>Login Credentials</span>}
+                    </NavLink>
+                )}
+
                 <div className="sidebar-divider" />
                 {showFull && <div className="sidebar-section-label">Add Property</div>}
 
@@ -93,7 +112,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                 <div className="sidebar-dropdown-wrap" style={{ position: 'relative' }}>
                     <button
                         ref={triggerRef}
-                        className={`sidebar-link sidebar-dropdown-btn ${addOpen ? 'open' : ''}`}
+                        className={`sidebar-link sidebar-dropdown-btn ${addOpen ? 'open' : ''} ${isAddPropertyActive || addOpen ? 'active' : ''}`}
                         onClick={() => setAddOpen(!addOpen)}
                         title="Add Property"
                     >
@@ -112,11 +131,8 @@ export default function Sidebar({ collapsed, onToggle }) {
                             {PROPERTY_TYPES.map(({ id, label, icon: Icon }) => (
                                 <button
                                     key={id}
-                                    className="sidebar-sub-link"
-                                    onClick={() => {
-                                        navigate(`/add-property/${id}`);
-                                        setAddOpen(false);
-                                    }}
+                                    className={`sidebar-sub-link${location.pathname === `/add-property/${id}` ? ' active' : ''}`}
+                                    onClick={() => navigate(`/add-property/${id}`)}
                                 >
                                     <Icon size={17} />
                                     <span>{label}</span>
@@ -132,7 +148,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                             {PROPERTY_TYPES.map(({ id, label, icon: Icon }) => (
                                 <button
                                     key={id}
-                                    className="sidebar-popover-link"
+                                    className={`sidebar-popover-link${location.pathname === `/add-property/${id}` ? ' active' : ''}`}
                                     onClick={() => {
                                         navigate(`/add-property/${id}`);
                                         setAddOpen(false);

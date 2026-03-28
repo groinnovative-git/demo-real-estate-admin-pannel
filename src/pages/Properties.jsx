@@ -22,7 +22,8 @@ const TYPE_LABELS = {
 function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
     const Icon = TYPE_ICONS[property.type] || Building;
     return (
-        <div className="property-card transition-all">
+        <div className="property-card">
+            {/* ── Image ── */}
             <div className="property-card-img-wrap">
                 <img
                     src={property.images?.[0]}
@@ -32,6 +33,7 @@ function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
                         e.target.src = `https://placehold.co/400x200/1E2D3D/f5b642?text=${(property.type || 'P')[0].toUpperCase()}`;
                     }}
                 />
+                <div className="property-card-img-overlay" />
                 <div className="property-card-type-badge">
                     <Icon size={11} />
                     {TYPE_LABELS[property.type] || property.type}
@@ -40,26 +42,45 @@ function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
                     {property.status === 'sold' ? 'Sold' : 'Active'}
                 </div>
             </div>
+
+            {/* ── Body ── */}
             <div className="property-card-body">
                 <div className="property-card-title" title={property.title}>{property.title}</div>
-                <div className="property-card-loc"><MapPin size={12} />{property.location}</div>
-                <div className="property-card-meta">
-                    {property.bhk > 0 && <span><Bed size={12} /> {property.bhk} BHK</span>}
-                    {property.area > 0 && <span><Maximize2 size={12} /> {property.area} sqft</span>}
-                    {property.loanSupport && <span className="property-card-loan-badge">Loan ✓</span>}
+                <div className="property-card-loc">
+                    <MapPin size={12} />
+                    <span>{property.location}</span>
                 </div>
+                {(property.bhk > 0 || property.area > 0 || property.loanSupport) && (
+                    <div className="property-card-meta">
+                        {property.bhk > 0 && (
+                            <span className="pc-meta-chip"><Bed size={11} />{property.bhk} BHK</span>
+                        )}
+                        {property.area > 0 && (
+                            <span className="pc-meta-chip"><Maximize2 size={11} />{property.area} sqft</span>
+                        )}
+                        {property.loanSupport && (
+                            <span className="pc-meta-chip pc-loan-chip">Loan ✓</span>
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* ── Segmented action footer ── */}
             <div className="property-card-actions">
-                <button className="btn-icon" onClick={() => onView(property)} title="View Detail">
-                    <Eye size={15} />
+                <button className="pc-action-btn pc-btn-view" onClick={() => onView(property)}>
+                    <Eye size={14} /><span>View</span>
                 </button>
-                <button className="btn-icon" onClick={() => onEdit(property)} title="Edit Property">
-                    <Edit2 size={15} />
+                <span className="pc-action-sep" />
+                <button className="pc-action-btn pc-btn-edit" onClick={() => onEdit(property)}>
+                    <Edit2 size={14} /><span>Edit</span>
                 </button>
                 {isAdmin && (
-                    <button className="btn-icon danger" onClick={() => onDelete(property)} title="Delete Property">
-                        <Trash2 size={15} />
-                    </button>
+                    <>
+                        <span className="pc-action-sep" />
+                        <button className="pc-action-btn pc-btn-delete" onClick={() => onDelete(property)}>
+                            <Trash2 size={14} /><span>Delete</span>
+                        </button>
+                    </>
                 )}
             </div>
         </div>

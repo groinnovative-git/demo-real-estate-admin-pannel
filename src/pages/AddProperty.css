@@ -250,9 +250,9 @@
     position: relative;
     background: linear-gradient(135deg, #f6fef9 0%, #f0fdf4 55%, #fffceb 100%);
     border: 1px solid #d1ead9;
-    border-radius: 22px;
-    padding: 40px 44px;
-    margin-bottom: 36px;
+    border-radius: 18px;
+    padding: 24px 32px;
+    margin-bottom: 28px;
     overflow: hidden;
     box-shadow:
         0 1px 0 0 rgba(255,255,255,0.9) inset,
@@ -270,7 +270,7 @@
     right: 0;
     height: 3px;
     background: linear-gradient(90deg, #0d6933 0%, #86c127 55%, #f5b642 100%);
-    border-radius: 22px 22px 0 0;
+    border-radius: 18px 18px 0 0;
 }
 
 /* Diagonal light-sweep shimmer — runs once on load, then loops slowly */
@@ -278,7 +278,7 @@
     content: '';
     position: absolute;
     inset: 0;
-    border-radius: 22px;
+    border-radius: 18px;
     background: linear-gradient(
         108deg,
         transparent 0%,
@@ -312,15 +312,15 @@
     z-index: 1;
     display: flex;
     align-items: center;
-    gap: 28px;
+    gap: 20px;
 }
 
 /* Icon tile — background + shadow come from inline theme styles */
 .ap-hero-icon-wrap {
     flex-shrink: 0;
-    width: 80px;
-    height: 80px;
-    border-radius: 24px;
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -348,7 +348,7 @@
         rgba(255, 255, 255, 0.10) 60%,
         rgba(255, 255, 255, 0) 100%
     );
-    border-radius: 24px 24px 0 0;
+    border-radius: 18px 18px 0 0;
     pointer-events: none;
     z-index: 1;
 }
@@ -388,11 +388,11 @@
 
 /* Main page title */
 .ap-hero-title {
-    font-size: 1.85rem;
+    font-size: 1.5rem;
     font-weight: 800;
     color: #0f172a;
     letter-spacing: -0.03em;
-    line-height: 1.15;
+    line-height: 1.2;
     margin: 0;
     /* Drift up */
     animation: heroTextUp 0.45s ease 0.30s both;
@@ -400,12 +400,12 @@
 
 /* Subtitle */
 .ap-hero-subtitle {
-    font-size: 0.9rem;
+    font-size: 0.845rem;
     color: #64748b;
     font-weight: 500;
     margin: 0;
-    line-height: 1.6;
-    max-width: 520px;
+    line-height: 1.5;
+    max-width: 480px;
     /* Drift up, slightly later */
     animation: heroTextUp 0.45s ease 0.40s both;
 }
@@ -435,22 +435,22 @@
 
 @media (max-width: 640px) {
     .ap-hero-header {
-        padding: 28px 24px;
-        border-radius: 16px;
+        padding: 18px 20px;
+        border-radius: 14px;
     }
 
     .ap-hero-icon-wrap {
-        width: 64px;
-        height: 64px;
-        border-radius: 18px;
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
     }
 
     .ap-hero-title {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
     }
 
     .ap-hero-content {
-        gap: 18px;
+        gap: 14px;
     }
 
     .ap-hero-watermark {
