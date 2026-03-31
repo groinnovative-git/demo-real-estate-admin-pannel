@@ -20,8 +20,8 @@ export default function Login() {
 
     const from = location.state?.from?.pathname || '/dashboard';
 
-    const [form,         setForm]         = useState({ email: '', password: '' });
-    const [errors,       setErrors]       = useState({ email: '', password: '' });
+    const [form,         setForm]         = useState({ username: '', password: '' });
+    const [errors,       setErrors]       = useState({ username: '', password: '' });
     const [showPass,     setShowPass]     = useState(false);
     const [loading,      setLoading]      = useState(false);
     const [successToast, setSuccessToast] = useState(false);
@@ -42,9 +42,7 @@ export default function Login() {
     const validateField = (name, value) => {
         let errMsg = '';
         if (!value.trim()) {
-            errMsg = name === 'email' ? 'Email is required.' : 'Password is required.';
-        } else if (name === 'email' && !/\S+@\S+\.\S+/.test(value)) {
-            errMsg = 'Please enter a valid email address.';
+            errMsg = name === 'username' ? 'Username is required.' : 'Password is required.';
         }
         setErrors(prev => ({ ...prev, [name]: errMsg }));
         return !errMsg;
@@ -64,12 +62,12 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const isEmailValid = validateField('email',    form.email);
+        const isUserValid  = validateField('username', form.username);
         const isPassValid  = validateField('password', form.password);
-        if (!isEmailValid || !isPassValid) return;
+        if (!isUserValid || !isPassValid) return;
 
         setLoading(true);
-        const result = await login(form.email, form.password);
+        const result = await login(form.username, form.password);
         setLoading(false);
 
         if (result.ok) {
@@ -128,18 +126,18 @@ export default function Login() {
 
                 <form onSubmit={handleSubmit} className="login-form" noValidate>
                     <div className="form-group">
-                        <label className="form-label">Email Address</label>
+                        <label className="form-label">Username</label>
                         <input
-                            type="email"
-                            name="email"
-                            value={form.email}
+                            type="text"
+                            name="username"
+                            value={form.username}
                             onChange={handleChange}
                             onBlur={handleBlur}
-                            className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-                            placeholder="Enter your email"
-                            autoComplete="email"
+                            className={`form-control ${errors.username ? 'is-invalid' : ''}`}
+                            placeholder="Enter your username"
+                            autoComplete="username"
                         />
-                        {errors.email && <div className="login-field-error">{errors.email}</div>}
+                        {errors.username && <div className="login-field-error">{errors.username}</div>}
                     </div>
 
                     <div className="form-group">

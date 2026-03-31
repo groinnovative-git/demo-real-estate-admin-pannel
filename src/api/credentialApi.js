@@ -1,51 +1,78 @@
 import axiosInstance from './axiosInstance';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CREDENTIAL API
-//
-// HOW TO CONNECT THE REAL API (when backend is ready):
-//   1. Remove the MOCK_CREDENTIALS block and the mock functions below it.
-//   2. Uncomment the real API functions (marked with ── REAL API ──).
-//   3. Adjust the endpoint URLs to match your backend routes.
-//   4. That's it — the UI component (CredentialManagement.jsx) needs zero changes.
-// ─────────────────────────────────────────────────────────────────────────────
-
-// ── MOCK DATA (remove when API is ready) ─────────────────────────────────────
-const MOCK_CREDENTIALS = [
-    { id: 'admin',    role: 'Admin',    username: 'admin@gmail.com',    password: 'Admin@2026'    },
-    { id: 'manager',  role: 'Manager',  username: 'manager@gmail.com',  password: 'Manager@2026'  },
-    { id: 'employee', role: 'Employee', username: 'employee@gmail.com', password: 'Employee@2026' },
-];
-
-// ── GET all credentials (mock) ────────────────────────────────────────────────
-/**
- * Fetches all fixed role credentials.
- * @returns {Promise<Array<{ id, role, username, password }>>}
- */
+// ── GET all credentials ────────────────────────────────────────────────
 export const getCredentials = async () => {
-    // ── MOCK ── remove block below when API is ready
-    await new Promise((r) => setTimeout(r, 300)); // simulate network
-    return [...MOCK_CREDENTIALS];
+    // Expected response: [{ userId, username, email, password, role, isActive }, ...]
+    const res = await axiosInstance.get('/api/Auth/GetUserCrediential');
+    // Map backend userId to frontend id to preserve compatibility
+    return (res.data || [])
+        .filter(user => user.isActive) // exclude deactivated/deleted users if returning them
+        .map(user => ({
+            ...user,
+            id: user.userId,
+            emailid: user.email, // Map backend 'email' to frontend 'emailid'
+            password: user.password || ''
+        }));
+};
 
-    // ── REAL API ── uncomment when backend is ready:
-    // const res = await axiosInstance.get('/api/Credentials');
-    // return res.data; // expected: [{ id, role, username, password }, ...]
+// ── CREATE a credential ───────────────────────────────────────────────────────
+export const createCredential = async (payload) => {
+    // Payload mapping: { name, username, emailid, password, role }
+    const res = await axiosInstance.post(`/api/Auth/CreateUserCrediential`, {
+        name: payload.name,
+        username: payload.username,
+        email: payload.emailid, // Send as 'email' per swagger
+        password: payload.password,
+        role: payload.role
+    });
+    // The create response usually doesn't return the full object, or might just return a success message.
+    // If it returns the object with userId, we map it. Otherwise fallback to fetch again or use a placeholder.
+    if (res.data && res.data.userId) {
+        return {
+            ...res.data,
+            id: res.data.userId,
+            password: res.data.password || payload.password
+        };
+    }
+    
+    // As a fallback, since we don't know if POST returns the entity natively,
+    // we return a shaped object so the UI can optimistically add it. 
+    // An immediate page reload or re-fetch might be cleaner in production, 
+    // but this maintains the app flow.
+    return {
+        id: res.data?.userId || Math.random().toString(36).substr(2, 9),
+        role: payload.role,
+        name: payload.name,
+        username: payload.username,
+        emailid: payload.emailid,
+        password: payload.password,
+        isActive: true
+    };
 };
 
 // ── UPDATE a single credential ────────────────────────────────────────────────
-/**
- * Updates username and password for a given role id.
- * @param {string} id  - role id: 'admin' | 'manager' | 'employee'
- * @param {{ username: string, password: string }} payload
- * @returns {Promise<void>}
- */
 export const updateCredential = async (id, payload) => {
-    // ── MOCK ── remove block below when API is ready
-    await new Promise((r) => setTimeout(r, 600)); // simulate network
-    return; // mock success
+    // Endpoint: PUT /api/Auth/UpdateUserCrediential
+    // Payload: { userId, name, username, emailid, password }
+    const requestPayload = {
+        userId: id,
+        name: payload.name,
+        username: payload.username,
+        email: payload.emailid, // Send as 'email' per swagger
+        ...(payload.password && payload.password.trim() ? { password: payload.password } : {})
+    };
+    const res = await axiosInstance.put(`/api/Auth/UpdateUserCrediential`, requestPayload);
+    return res.data;
+};
 
-    // ── REAL API ── uncomment when backend is ready:
-    // await axiosInstance.put(`/api/Credentials/${id}`, payload);
-    //   OR
-    // await axiosInstance.patch(`/api/Credentials/${id}`, payload);
+// ── DELETE a credential ───────────────────────────────────────────────────────
+export const deleteCredential = async (id) => {
+    // Endpoint: POST /api/Auth/DeleteUserCrediential
+    // Payload schema: { userId, isActive: <bool> }
+    const requestPayload = {
+        userId: id,
+        isActive: false // Deactivating acts as deletion
+    };
+    const res = await axiosInstance.post(`/api/Auth/DeleteUserCrediential`, requestPayload);
+    return res.data;
 };

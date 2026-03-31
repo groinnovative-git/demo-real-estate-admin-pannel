@@ -37,9 +37,9 @@ export function AuthProvider({ children }) {
      * Stores the returned token + user data in localStorage.
      * Returns { ok: true } on success, { ok: false, message } on failure.
      */
-    const login = async (email, password) => {
+    const login = async (username, password) => {
         try {
-            const response = await loginUser({ email, password });
+            const response = await loginUser({ username, password });
             const data = response.data;
 
             // Store token if present
@@ -51,10 +51,10 @@ export function AuthProvider({ children }) {
             // Build a safe user object from whatever the API returns
             const safeUser = {
                 id:     data?.id     || data?.userId    || '',
-                email:  data?.email  || email,
-                name:   data?.name   || data?.fullName  || email.split('@')[0],
+                email:  data?.email  || data?.emailid   || '',
+                name:   data?.name   || data?.fullName  || username,
                 role:   (data?.role  || data?.userRole  || 'admin').toLowerCase(),
-                avatar: (data?.name  || email)[0]?.toUpperCase() || 'U',
+                avatar: (data?.name  || username)[0]?.toUpperCase() || 'U',
             };
 
             localStorage.setItem('re_admin_user', JSON.stringify(safeUser));
@@ -69,8 +69,8 @@ export function AuthProvider({ children }) {
 
             let message;
             switch (status) {
-                case 400: message = serverMsg || 'Invalid email or password format.'; break;
-                case 401: message = 'Incorrect email or password.';                  break;
+                case 400: message = serverMsg || 'Invalid username or password format.'; break;
+                case 401: message = 'Incorrect username or password.';                  break;
                 case 403: message = 'Your account does not have access.';            break;
                 case 404: message = 'Account not found.';                            break;
                 case 500: message = 'Server error. Please try again later.';         break;
