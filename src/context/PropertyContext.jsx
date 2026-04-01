@@ -1,13 +1,13 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
-import { mockLeads } from '../data/mockData';
 import * as propertyApi from '../api/propertyApi';
+import * as leadApi from '../api/leadApi';
 import { normalizeProperty } from '../utils/propertyPayloadMapper';
 
 const PropertyContext = createContext(null);
 
 const initialState = {
     properties: [],
-    leads:      mockLeads,
+    leads:      [],
     loading:    false,
     error:      null,
 };
@@ -31,11 +31,13 @@ function propertyReducer(state, action) {
             };
         case 'DELETE_PROPERTY':
             return { ...state, properties: state.properties.filter(p => p.id !== action.payload) };
+        case 'SET_LEADS':
+            return { ...state, leads: action.payload };
         case 'UPDATE_LEAD':
             return {
                 ...state,
                 leads: state.leads.map(l =>
-                    l.id === action.payload.id ? action.payload : l
+                    l.contactId === action.payload.contactId ? action.payload : l
                 ),
             };
         default:
@@ -43,13 +45,33 @@ function propertyReducer(state, action) {
     }
 }
 
+/**
+ * Normalize a raw API contact object into a consistent frontend lead shape.
+ */
+function normalizeLead(raw) {
+    return {
+        contactId:        raw.contactId        || raw.ContactId || '',
+        fullName:         raw.fullName         || raw.FullName || '',
+        email:            raw.email            || raw.Email || '',
+        phoneNumber:      raw.phoneNumber      || raw.PhoneNumber || '',
+        customerInterest: raw.customerInterest || raw.CustomerInterest || '',
+        message:          raw.message          || raw.Message || '',
+        propertyId:       raw.propertyId       || raw.PropertyId || '',
+        leadStatus:       (raw.leadStatus      || raw.LeadStatus || 'New').trim(),
+        createdDate:      raw.submittedDate    || raw.SubmittedDate || raw.createdDate || raw.CreatedDate || raw.createdAt || '',
+        propertyName:     raw.propertyName     || raw.PropertyName || '',
+    };
+}
+
 export function PropertyProvider({ children }) {
     const [state, dispatch] = useReducer(propertyReducer, initialState);
 
     useEffect(() => {
         fetchProperties();
+        fetchLeads();
     }, []);
 
+    /* ── Properties ─────────────────────────────────────────────────────── */
     const fetchProperties = async () => {
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
@@ -79,8 +101,76 @@ export function PropertyProvider({ children }) {
         await fetchProperties();
     };
 
-    const updateLead = (lead) => {
-        dispatch({ type: 'UPDATE_LEAD', payload: lead });
+    /* ── Leads ──────────────────────────────────────────────────────────── */
+    const fetchLeads = async () => {
+        try {
+            const response = await leadApi.getAllContacts();
+            const raw = response.data;
+            const list = Array.isArray(raw)
+                ? raw
+                : Array.isArray(raw?.data) ? raw.data
+                : Array.isArray(raw?.result) ? raw.result
+                : [];
+            dispatch({ type: 'SET_LEADS', payload: list.map(normalizeLead) });
+        } catch (err) {
+            console.error('Failed to fetch leads:', err);
+        }
+    };
+
+    /**
+     * Update lead status on the backend and refresh the leads list.
+     */
+    const updateLeadStatus = async (lead, newStatus) => {
+        const payload = {
+            contactId:        lead.contactId,
+            fullName:         lead.fullName,
+            email:            lead.email,
+            phoneNumber:      lead.phoneNumber,
+            customerInterest: lead.customerInterest,
+            message:          lead.message,
+            propertyId:       lead.propertyId || null,
+            leadStatus:       newStatus,
+        };
+        await leadApi.updateContact(payload);
+        // Optimistically update local state
+        dispatch({ type: 'UPDATE_LEAD', payload: { ...lead, leadStatus: newStatus } });
+    };
+
+    /**
+     * Fetch audit / status-history for a single lead.
+     * API returns: { contact: {...}, auditHistory: [{ description, modifiedOn }] }
+     * description format: "LeadStatus changed from 'Old' to 'New' by userId on date"
+     */
+    const fetchLeadAudit = async (contactId) => {
+        try {
+            const response = await leadApi.getContactAuditDetails(contactId);
+            const raw = response.data;
+
+            // Extract auditHistory array from response
+            const history = Array.isArray(raw)
+                ? raw
+                : Array.isArray(raw?.auditHistory) ? raw.auditHistory
+                : Array.isArray(raw?.data?.auditHistory) ? raw.data.auditHistory
+                : Array.isArray(raw?.data) ? raw.data
+                : [];
+
+            // Parse each description string into structured data
+            return history.map(entry => {
+                const desc = entry.description || '';
+                // Pattern: "LeadStatus changed from 'Old' to 'New' by <user> on <date>"
+                const match = desc.match(/from\s+'([^']+)'\s+to\s+'([^']+)'\s+by\s+(.+?)\s+on\s+/i);
+                return {
+                    oldStatus:  match ? match[1] : '—',
+                    newStatus:  match ? match[2] : '—',
+                    changedBy:  'System', // Will be replaced with username when backend provides it
+                    changedAt:  entry.modifiedOn || '',
+                    rawDescription: desc,
+                };
+            });
+        } catch (err) {
+            console.error('Failed to fetch audit:', err);
+            return [];
+        }
     };
 
     const activeProperties = state.properties.filter(p => p.status !== 'sold');
@@ -97,8 +187,10 @@ export function PropertyProvider({ children }) {
             addProperty,
             updateProperty,
             deleteProperty,
-            updateLead,
             fetchProperties,
+            fetchLeads,
+            updateLeadStatus,
+            fetchLeadAudit,
         }}>
             {children}
         </PropertyContext.Provider>
