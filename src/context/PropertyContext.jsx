@@ -162,9 +162,11 @@ export function PropertyProvider({ children }) {
                 return {
                     oldStatus:  match ? match[1] : '—',
                     newStatus:  match ? match[2] : '—',
-                    changedBy:  'System', // Will be replaced with username when backend provides it
+                    changedBy:  entry.name || (match ? match[3] : 'System'), 
                     changedAt:  entry.modifiedOn || '',
                     rawDescription: desc,
+                    name:       entry.name || '',
+                    modifiedOn: entry.modifiedOn || '',
                 };
             });
         } catch (err) {

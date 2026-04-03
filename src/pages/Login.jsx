@@ -62,8 +62,8 @@ export default function Login() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        const isUserValid  = validateField('username', form.username);
-        const isPassValid  = validateField('password', form.password);
+        const isUserValid = validateField('username', form.username);
+        const isPassValid = validateField('password', form.password);
         if (!isUserValid || !isPassValid) return;
 
         setLoading(true);

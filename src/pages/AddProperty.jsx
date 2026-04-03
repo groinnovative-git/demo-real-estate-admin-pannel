@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     Upload, X, CheckCircle, Building,
@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { buildPropertyFormData, getErrorMessage } from '../utils/propertyPayloadMapper';
+import { getAmenitiesForType } from '../data/amenitiesByPropertyType';
 import { compressImages } from '../utils/imageCompressor';
 import PropertyLocationEmbed from '../components/PropertyLocationEmbed';
 import PropertyVideoSection from '../components/PropertyVideoSection';
@@ -14,11 +15,8 @@ import './AddProperty.css';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const AMENITY_OPTIONS = [
-    'Swimming Pool', 'Gym', 'Security', 'Parking', 'Club House',
-    'Power Backup', 'Lift', 'Garden', 'Kids Play Area', 'CCTV',
-    'Intercom', 'Fire Safety', 'Water Supply 24x7',
-];
+// Amenities are now loaded dynamically per property type
+// from src/data/amenitiesByPropertyType.js
 
 const FACING_OPTIONS = [
     'East', 'West', 'North', 'South',
@@ -133,47 +131,47 @@ const TYPE_CONFIG = {
         },
         fields: {
             totalLandArea: true, pricePerAcre: true, landType: true,
-            borewell: true, ebConnection: true, roadAccess: true, approval: true,
+            approval: true, amenities: true,
         },
     },
 };
 
 const REQUIRED_FIELDS = {
     apartment: [
-        { key: 'title',      label: 'Property Title' },
-        { key: 'price',      label: 'Asking Price' },
-        { key: 'location',   label: 'Location' },
+        { key: 'title', label: 'Property Title' },
+        { key: 'price', label: 'Asking Price' },
+        { key: 'location', label: 'Location' },
         { key: 'carpetArea', label: 'Carpet / Built-up Area' },
     ],
     villa: [
-        { key: 'title',    label: 'Property Title' },
-        { key: 'price',    label: 'Asking Price' },
+        { key: 'title', label: 'Property Title' },
+        { key: 'price', label: 'Asking Price' },
         { key: 'location', label: 'Location' },
         { key: 'plotArea', label: 'Plot Area' },
     ],
     plot: [
-        { key: 'title',    label: 'Property Title' },
-        { key: 'price',    label: 'Asking Price' },
+        { key: 'title', label: 'Property Title' },
+        { key: 'price', label: 'Asking Price' },
         { key: 'location', label: 'Location' },
         { key: 'plotArea', label: 'Plot Area' },
     ],
     house: [
-        { key: 'title',    label: 'Property Title' },
-        { key: 'price',    label: 'Asking Price' },
+        { key: 'title', label: 'Property Title' },
+        { key: 'price', label: 'Asking Price' },
         { key: 'location', label: 'Location' },
         { key: 'plotArea', label: 'Plot Area' },
     ],
     commercial: [
-        { key: 'title',       label: 'Property Title' },
-        { key: 'price',       label: 'Asking Price' },
-        { key: 'location',    label: 'Location' },
+        { key: 'title', label: 'Property Title' },
+        { key: 'price', label: 'Asking Price' },
+        { key: 'location', label: 'Location' },
         { key: 'builtUpArea', label: 'Built-up Area' },
     ],
     farmland: [
-        { key: 'title',         label: 'Property Title' },
-        { key: 'location',      label: 'Location' },
+        { key: 'title', label: 'Property Title' },
+        { key: 'location', label: 'Location' },
         { key: 'totalLandArea', label: 'Total Land Area' },
-        { key: 'price',         label: 'Total Price' },
+        { key: 'price', label: 'Total Price' },
     ],
 };
 
@@ -189,7 +187,7 @@ function FieldGroup({ label, children }) {
 }
 
 const PARTICLES = [
-    { x: '6%',  y: '28%', s: 16, delay: '0s',   dur: '2.2s' },
+    { x: '6%', y: '28%', s: 16, delay: '0s', dur: '2.2s' },
     { x: '13%', y: '65%', s: 11, delay: '0.4s', dur: '1.9s' },
     { x: '20%', y: '40%', s: 20, delay: '0.9s', dur: '2.5s' },
     { x: '30%', y: '74%', s: 12, delay: '0.2s', dur: '2.0s' },
@@ -230,30 +228,33 @@ export default function AddProperty() {
     const { addProperty } = useProperties();
     const fileRef = useRef();
 
-    const config   = TYPE_CONFIG[type] || TYPE_CONFIG.apartment;
+    const config = TYPE_CONFIG[type] || TYPE_CONFIG.apartment;
     const { fields } = config;
-    const TypeIcon  = config.icon;
+
+    // Dynamic amenity list based on current property type
+    const currentAmenities = useMemo(() => getAmenitiesForType(type), [type]);
+    const TypeIcon = config.icon;
 
     const [form, setForm] = useState({
         title: '', price: '', location: '',
         carpetArea: '', plotArea: '', builtUpArea: '',
-        bhk: '2', bathrooms: '2',
+        bhk: '', bathrooms: '',
         floor: '', totalFloors: '',
-        furnishing: 'Semi-Furnished', facing: 'East',
+        furnishing: '', facing: '',
         ageYears: '', maintenance: '', washrooms: '',
-        commercialType: 'Shop',
+        commercialType: '',
         plotDimensions: '', approvalDetails: '',
         amenities: [], images: [], description: '',
         shortVideoUrl: '', fullVideoUrl: '',
         mapEmbedSrc: '',
         loanSupport: false,
         // ── New PDF fields ──
-        apartmentSubType: 'Apartment',
-        plotSubType: 'Residential',
-        approval: '',
+        apartmentSubType: '',
+        plotSubType: '',
+        govApprovedCertificate: '',
         totalLandArea: '',
         pricePerAcre: '',
-        landType: 'Dry Land',
+        landType: '',
         floorDetails: '',
         borewell: false,
         ebConnection: false,
@@ -262,10 +263,10 @@ export default function AddProperty() {
     const [imageFiles, setImageFiles] = useState([]);
 
     const [submitted, setSubmitted] = useState(false);
-    const [loading,   setLoading]   = useState(false);
-    const [toast,     setToast]     = useState({ visible: false, message: '', type: 'error' });
+    const [loading, setLoading] = useState(false);
+    const [toast, setToast] = useState({ visible: false, message: '', type: 'error' });
 
-    const showToast  = (message, type = 'error') => setToast({ visible: true, message, type });
+    const showToast = (message, type = 'error') => setToast({ visible: true, message, type });
     const closeToast = () => setToast({ visible: false, message: '', type: 'error' });
 
     const handleChange = (e) => {
@@ -284,7 +285,7 @@ export default function AddProperty() {
 
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
-        const urls  = files.map(f => URL.createObjectURL(f));
+        const urls = files.map(f => URL.createObjectURL(f));
         setForm(f => ({ ...f, images: [...f.images, ...urls] }));
         setImageFiles(prev => [...prev, ...files]);
     };
@@ -507,7 +508,7 @@ export default function AddProperty() {
                         )}
                         {fields.bhk && (
                             <FieldGroup label="Bedrooms (BHK)">
-                                <select className="premium-input" name="bhk" value={form.bhk} onChange={handleChange}>
+                                <select className="premium-input" name="bhk" value={form.bhk} onChange={handleChange} placeholder="Select BHK">
                                     {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} BHK</option>)}
                                 </select>
                             </FieldGroup>
@@ -625,7 +626,7 @@ export default function AddProperty() {
                         )}
                         {fields.approval && (
                             <FieldGroup label="Approval">
-                                <select className="premium-input" name="approval" value={form.approval} onChange={handleChange}>
+                                <select className="premium-input" name="govApprovedCertificate" value={form.govApprovedCertificate} onChange={handleChange}>
                                     <option value="">Select Approval</option>
                                     <option>DTCP Approved</option>
                                     <option>RERA Approved</option>
@@ -634,54 +635,19 @@ export default function AddProperty() {
                                 </select>
                             </FieldGroup>
                         )}
-                        {fields.borewell && (
-                            <FieldGroup label="Borewell">
-                                <div className="loan-toggle-field">
-                                    <button type="button" role="switch" aria-checked={form.borewell}
-                                        className={`loan-toggle-switch${form.borewell ? ' loan-toggle-switch--on' : ''}`}
-                                        onClick={() => setForm(f => ({ ...f, borewell: !f.borewell }))}>
-                                        <span className="loan-toggle-thumb" />
-                                    </button>
-                                    <span className="loan-toggle-label">{form.borewell ? 'Available' : 'Not Available'}</span>
-                                </div>
-                            </FieldGroup>
-                        )}
-                        {fields.ebConnection && (
-                            <FieldGroup label="EB Connection">
-                                <div className="loan-toggle-field">
-                                    <button type="button" role="switch" aria-checked={form.ebConnection}
-                                        className={`loan-toggle-switch${form.ebConnection ? ' loan-toggle-switch--on' : ''}`}
-                                        onClick={() => setForm(f => ({ ...f, ebConnection: !f.ebConnection }))}>
-                                        <span className="loan-toggle-thumb" />
-                                    </button>
-                                    <span className="loan-toggle-label">{form.ebConnection ? 'Available' : 'Not Available'}</span>
-                                </div>
-                            </FieldGroup>
-                        )}
-                        {fields.roadAccess && (
-                            <FieldGroup label="Road Access for Vehicles">
-                                <div className="loan-toggle-field">
-                                    <button type="button" role="switch" aria-checked={form.roadAccess}
-                                        className={`loan-toggle-switch${form.roadAccess ? ' loan-toggle-switch--on' : ''}`}
-                                        onClick={() => setForm(f => ({ ...f, roadAccess: !f.roadAccess }))}>
-                                        <span className="loan-toggle-thumb" />
-                                    </button>
-                                    <span className="loan-toggle-label">{form.roadAccess ? 'Available' : 'Not Available'}</span>
-                                </div>
-                            </FieldGroup>
-                        )}
+
                     </div>
                 </div>
 
                 {/* ── Section 3: Amenities ─────────────────────────────────── */}
-                {fields.amenities && (
+                {fields.amenities && currentAmenities.length > 0 && (
                     <div className="card premium-form-section">
                         <div className="premium-section-header">
                             <CheckCircle size={18} color="#0d6933" />
-                            <h3 className="premium-section-title">Premium Amenities</h3>
+                            <h3 className="premium-section-title">Amenities</h3>
                         </div>
                         <div className="premium-checkbox-grid">
-                            {AMENITY_OPTIONS.map(a => (
+                            {currentAmenities.map(a => (
                                 <label
                                     key={a}
                                     className={`premium-checkbox-pill ${form.amenities.includes(a) ? 'active' : ''}`}

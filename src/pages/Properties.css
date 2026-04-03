@@ -3,6 +3,42 @@
     flex-direction: column;
 }
 
+/* ── Pagination ──────────────────────────────────────────────────────────── */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+    margin-top: 24px;
+}
+.pg-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #e4e9ef;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.pg-btn:hover:not(:disabled) {
+    background: #f0fdf4;
+    border-color: #0d6933;
+    color: #0d6933;
+}
+.pg-btn--active {
+    background: #0d6933;
+    border-color: #0d6933;
+    color: #fff;
+}
+.pg-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
 .properties-header {
     display: flex;
     align-items: center;
@@ -12,9 +48,12 @@
 
 .properties-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 18px;
 }
+@media (max-width: 1200px) { .properties-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 800px)  { .properties-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px)  { .properties-grid { grid-template-columns: 1fr; } }
 
 /* ── Property Card Shell ─────────────────────────────────────────────────── */
 .property-card {
@@ -143,6 +182,14 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* ── Price ───────────────────────────────────────────────────────────────── */
+.property-card-price {
+    margin-top: 6px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #0d6933;
 }
 
 /* ── Meta chips row ──────────────────────────────────────────────────────── */

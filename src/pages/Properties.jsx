@@ -1,22 +1,25 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import {
-    Search, Filter, MapPin, Bed, Maximize2, Edit2, Trash2, Eye,
-    Home, Building, TreePine, Landmark, Store, X, AlertTriangle, Loader
+    Search, Filter, MapPin, Edit2, Trash2, Eye,
+    X, AlertTriangle, Loader,
+    Home, Building, TreePine, Landmark, Store, Leaf
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { useAuth } from '../context/AuthContext';
-import { getErrorMessage } from '../utils/propertyPayloadMapper';
+import { getErrorMessage, normalizeProperty } from '../utils/propertyPayloadMapper';
+import * as propertyApi from '../api/propertyApi';
 import PropertyDetailModal from '../components/PropertyDetailModal';
 import EditPropertyModal from '../components/EditPropertyModal';
 import Toast from '../components/Toast';
 import './Properties.css';
 
 const TYPE_ICONS = {
-    apartment: Building, villa: TreePine, plot: Landmark, house: Home, commercial: Store,
+    apartment: Building, villa: TreePine, plot: Landmark, house: Home, commercial: Store, farmland: Leaf,
 };
 const TYPE_LABELS = {
     apartment: 'Apartment', villa: 'Villa', plot: 'Plot',
-    house: 'Individual House', commercial: 'Commercial',
+    house: 'Individual House', commercial: 'Commercial', farmland: 'Farm Land',
 };
 
 function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
@@ -50,17 +53,9 @@ function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
                     <MapPin size={12} />
                     <span>{property.location}</span>
                 </div>
-                {(property.bhk > 0 || property.area > 0 || property.loanSupport) && (
-                    <div className="property-card-meta">
-                        {property.bhk > 0 && (
-                            <span className="pc-meta-chip"><Bed size={11} />{property.bhk} BHK</span>
-                        )}
-                        {property.area > 0 && (
-                            <span className="pc-meta-chip"><Maximize2 size={11} />{property.area} sqft</span>
-                        )}
-                        {property.loanSupport && (
-                            <span className="pc-meta-chip pc-loan-chip">Loan ✓</span>
-                        )}
+                {property.price > 0 && (
+                    <div className="property-card-price">
+                        ₹{Number(property.price).toLocaleString('en-IN')}
                     </div>
                 )}
             </div>
@@ -88,25 +83,27 @@ function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
 }
 
 function ConfirmDeleteModal({ property, onConfirm, onClose, loading }) {
-    return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal confirm-dialog" onClick={e => e.stopPropagation()}>
-                <div className="modal-body" style={{ textAlign: 'center', padding: '32px 24px 16px' }}>
-                    <AlertTriangle size={40} color="var(--danger)" style={{ marginBottom: 12 }} />
-                    <h3 style={{ marginBottom: 8, fontSize: '1.05rem' }}>Delete Property?</h3>
-                    <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-                        Are you sure you want to delete <strong>{property?.title}</strong>? This action cannot be undone.
+    if (!property) return null;
+    return ReactDOM.createPortal(
+        <div className="pm-overlay" onClick={onClose} style={{ zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="pm-modal confirm-dialog" style={{ maxWidth: 420, padding: 0 }} onClick={e => e.stopPropagation()}>
+                <div className="modal-body" style={{ textAlign: 'center', padding: '36px 24px 20px' }}>
+                    <AlertTriangle size={44} color="var(--danger)" style={{ marginBottom: 16 }} />
+                    <h3 style={{ marginBottom: 12, fontSize: '1.2rem', color: 'var(--text-primary)' }}>Delete Property?</h3>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                        Are you sure you want to delete <strong>{property?.title}</strong>?<br/>This action cannot be undone.
                     </p>
                 </div>
-                <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={onClose} disabled={loading}>Cancel</button>
-                    <button className="btn btn-danger" onClick={onConfirm} disabled={loading}>
-                        {loading ? <Loader size={14} className="spin" /> : <Trash2 size={14} />}
+                <div className="modal-footer" style={{ padding: '16px 24px 24px', display: 'flex', gap: 12, justifyContent: 'center' }}>
+                    <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose} disabled={loading}>Cancel</button>
+                    <button className="btn btn-danger" style={{ flex: 1 }} onClick={onConfirm} disabled={loading}>
+                        {loading ? <Loader size={16} className="spin" /> : <Trash2 size={16} />}
                         {loading ? 'Deleting...' : 'Delete'}
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 
@@ -120,6 +117,7 @@ export default function Properties() {
     const [activeTab,     setActiveTab]     = useState('active');
     const [search,        setSearch]        = useState('');
     const [filterType,    setFilterType]    = useState('');
+    const [page,          setPage]          = useState(1);
     const [viewProperty,  setViewProperty]  = useState(null);
     const [editProperty,  setEditProperty]  = useState(null);
     const [deleteTarget,  setDeleteTarget]  = useState(null);
@@ -128,6 +126,31 @@ export default function Properties() {
 
     const showToast  = (message, type = 'error') => setToast({ visible: true, message, type });
     const closeToast = () => setToast({ visible: false, message: '', type: 'error' });
+
+    const handleAction = async (property, action) => {
+        try {
+            const res = await propertyApi.getPropertyById(property.id);
+            // If the API nests data inside a data object or result array, extract it
+            const rawData = Array.isArray(res.data) 
+                                ? res.data[0] 
+                                : res.data;
+            
+            if (!rawData) {
+                showToast('Property details not found.', 'error');
+                return;
+            }
+
+            const normalized = normalizeProperty(rawData);
+            
+            if (action === 'view') {
+                setViewProperty(normalized);
+            } else if (action === 'edit') {
+                setEditProperty(normalized);
+            }
+        } catch (err) {
+            showToast(getErrorMessage(err), 'error');
+        }
+    };
 
     const source = activeTab === 'active' ? activeProperties : soldProperties;
 
@@ -139,6 +162,13 @@ export default function Properties() {
             return matchSearch && (!filterType || p.type === filterType);
         }),
     [source, search, filterType]);
+
+    const PAGE_SIZE  = 8;
+    const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+    const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+    // Reset to page 1 whenever search / filter / tab changes
+    useEffect(() => { setPage(1); }, [search, filterType, activeTab]);
 
     const handleDelete = async () => {
         if (!deleteTarget) return;
@@ -192,33 +222,52 @@ export default function Properties() {
                         onChange={e => setSearch(e.target.value)}
                     />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Filter size={15} style={{ color: 'var(--text-muted)' }} />
-                    <select
-                        className="form-control"
-                        style={{ width: 180 }}
-                        value={filterType}
-                        onChange={e => setFilterType(e.target.value)}
-                    >
-                        <option value="">All Types</option>
-                        <option value="apartment">Apartment</option>
-                        <option value="villa">Villa</option>
-                        <option value="plot">Plot</option>
-                        <option value="house">Individual House</option>
-                        <option value="commercial">Commercial</option>
-                    </select>
-                </div>
-                {(search || filterType) && (
-                    <button
-                        className="btn btn-ghost"
-                        onClick={() => { setSearch(''); setFilterType(''); }}
-                        style={{ gap: 4 }}
-                    >
-                        <X size={14} /> Clear
-                    </button>
-                )}
-                <div style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {filtered.length} propert{filtered.length !== 1 ? 'ies' : 'y'}
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ position: 'relative', width: 220 }}>
+                        <Filter 
+                            size={15} 
+                            style={{ 
+                                color: 'var(--text-muted)', 
+                                position: 'absolute', 
+                                left: 14, 
+                                top: '50%', 
+                                transform: 'translateY(-50%)', 
+                                pointerEvents: 'none' 
+                            }} 
+                        />
+                        <select
+                            className="form-control"
+                            style={{ 
+                                width: '100%', 
+                                paddingLeft: 40, 
+                                paddingRight: 16
+                            }}
+                            value={filterType}
+                            onChange={e => setFilterType(e.target.value)}
+                        >
+                            <option value="">All Types</option>
+                            <option value="apartment">Apartment</option>
+                            <option value="villa">Villa</option>
+                            <option value="plot">Plot</option>
+                            <option value="house">Individual House</option>
+                            <option value="commercial">Commercial</option>
+                            <option value="farmland">Farm Land</option>
+                        </select>
+                    </div>
+                    
+                    {(search || filterType) && (
+                        <button
+                            className="btn btn-ghost"
+                            onClick={() => { setSearch(''); setFilterType(''); }}
+                            style={{ gap: 4 }}
+                        >
+                            <X size={14} /> Clear
+                        </button>
+                    )}
+                    
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', minWidth: 80, textAlign: 'right' }}>
+                        {filtered.length} propert{filtered.length !== 1 ? 'ies' : 'y'}
+                    </div>
                 </div>
             </div>
 
@@ -250,18 +299,51 @@ export default function Properties() {
 
             {/* Grid */}
             {!listLoading && !listError && filtered.length > 0 && (
-                <div className="properties-grid">
-                    {filtered.map(p => (
-                        <PropertyCard
-                            key={p.id}
-                            property={p}
-                            onView={setViewProperty}
-                            onEdit={setEditProperty}
-                            onDelete={setDeleteTarget}
-                            isAdmin={canDelete}
-                        />
-                    ))}
-                </div>
+                <>
+                    <div className="properties-grid">
+                        {paginated.map(p => (
+                            <PropertyCard
+                                key={p.id}
+                                property={p}
+                                onView={() => handleAction(p, 'view')}
+                                onEdit={() => handleAction(p, 'edit')}
+                                onDelete={setDeleteTarget}
+                                isAdmin={canDelete}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="pagination">
+                            <button
+                                className="pg-btn"
+                                disabled={page === 1}
+                                onClick={() => setPage(p => p - 1)}
+                            >
+                                ‹ Prev
+                            </button>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                                <button
+                                    key={n}
+                                    className={`pg-btn${n === page ? ' pg-btn--active' : ''}`}
+                                    onClick={() => setPage(n)}
+                                >
+                                    {n}
+                                </button>
+                            ))}
+
+                            <button
+                                className="pg-btn"
+                                disabled={page === totalPages}
+                                onClick={() => setPage(p => p + 1)}
+                            >
+                                Next ›
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
 
             {/* Modals */}

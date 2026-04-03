@@ -29,3 +29,15 @@ export const getPropertyById = (propertyId) =>
  */
 export const deleteProperty = (propertyId) =>
     axiosInstance.delete('/api/Property/DeleteProperty', { params: { propertyId } });
+
+/**
+ * POST /api/Property/GetPropertyDashboard
+ */
+export const getPropertyDashboard = (payload) =>
+    axiosInstance.post('/api/Property/GetPropertyDashboard', payload);
+
+/**
+ * GET /api/Property/GeCountsandDistributionByProperties
+ */
+export const getCountsAndDistribution = () =>
+    axiosInstance.get('/api/Property/GeCountsandDistributionByProperties');

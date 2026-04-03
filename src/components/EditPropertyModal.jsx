@@ -1,24 +1,31 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { X, Loader, Upload } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { buildPropertyFormData, getErrorMessage } from '../utils/propertyPayloadMapper';
+import { getAmenitiesForType } from '../data/amenitiesByPropertyType';
 import { compressImages } from '../utils/imageCompressor';
 import PropertyVideoSection from './PropertyVideoSection';
 import PropertyLocationEmbed from './PropertyLocationEmbed';
+import './PropertyModalPremium.css';
 
-const AMENITY_OPTIONS = [
-    'Swimming Pool', 'Gym', 'Security', 'Parking', 'Club House',
-    'Power Backup', 'Lift', 'Garden', 'Kids Play Area', 'CCTV',
-    'Intercom', 'Fire Safety', 'Water Supply 24x7',
-];
 
 export default function EditPropertyModal({ property, onClose, onSaved }) {
+    useEffect(() => {
+        const originalStyle = window.getComputedStyle(document.body).overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = originalStyle; };
+    }, []);
+
     const { updateProperty } = useProperties();
+
+    // Dynamic amenity list based on property type
+    const currentAmenities = useMemo(() => getAmenitiesForType(property.type), [property.type]);
 
     // Pre-populate form from the normalised property shape
     const [form, setForm] = useState({
         title:          property.title          || '',
-        price:          property.price          || '',
+        price:          property.price          ?? '',
         location:       property.location       || '',
         area:           property.area           || '',
         carpetArea:     property.area           || '',   // reuse area as carpetArea for mapper
@@ -34,6 +41,12 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         maintenance:    property.maintenance    || '',
         washrooms:      property.washrooms      || '',
         commercialType: property.commercialType || 'Office Space',
+        plotDimensions: property.plotDimensions || '',
+        totalLandArea:  property.totalLandArea  || '',
+        pricePerAcre:   property.pricePerAcre   || '',
+        floorDetails:   property.floorDetails   || '',
+        landType:               property.landType               || '',
+        govApprovedCertificate: property.govApprovedCertificate || '',
         status:         property.status         || 'active',
         loanSupport:    property.loanSupport    || false,
         amenities:      Array.isArray(property.amenities) ? [...property.amenities] : [],
@@ -104,18 +117,25 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         }
     };
 
-    return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <h2>Edit Property</h2>
-                    <button className="modal-close" onClick={onClose} disabled={loading}>
-                        <X size={20} />
-                    </button>
+    return ReactDOM.createPortal(
+        <div className="pm-overlay" onClick={onClose}>
+            <div className="pm-modal" onClick={e => e.stopPropagation()}>
+                <div className="pm-header">
+                    <div className="pm-header-left">
+                        <div className="pm-header-title">Edit Property</div>
+                        <span className="pm-header-id">
+                            Update details and media
+                        </span>
+                    </div>
+                    <div className="pm-header-right">
+                        <button className="pm-close" onClick={onClose} disabled={loading}>
+                            <X size={17} />
+                        </button>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit}>
-                    <div className="modal-body">
+                <form onSubmit={handleSubmit} className="pm-form">
+                    <div className="pm-body">
 
                         {error && (
                             <div style={{
@@ -140,19 +160,64 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                                 <label className="form-label">Location *</label>
                                 <input className="form-control" name="location" value={form.location} onChange={handleChange} placeholder="e.g. Banjara Hills, Hyderabad" required />
                             </div>
-                            <div className="form-group">
-                                <label className="form-label">Area (sqft)</label>
-                                <input className="form-control" type="number" name="area" value={form.area} onChange={handleChange} />
-                            </div>
+                            
+                            {(property.type === 'apartment' || property.type === 'villa' || property.type === 'house' || property.type === 'commercial') && (
+                                <div className="form-group">
+                                    <label className="form-label">{property.type === 'apartment' ? 'Carpet / Built-up Area (sqft)' : 'Built-up Area (sqft)'}</label>
+                                    <input className="form-control" type="number" name="area" value={form.area} onChange={handleChange} />
+                                </div>
+                            )}
+
+                            {(property.type === 'villa' || property.type === 'plot' || property.type === 'house') && (
+                                <div className="form-group">
+                                    <label className="form-label">Plot Area (sq.yd)</label>
+                                    <input className="form-control" type="number" name="plotArea" value={form.plotArea} onChange={handleChange} />
+                                </div>
+                            )}
+
                             {(property.type === 'apartment' || property.type === 'villa' || property.type === 'house') && (
                                 <div className="form-group">
-                                    <label className="form-label">BHK</label>
+                                    <label className="form-label">Bedrooms (BHK)</label>
                                     <select className="form-control" name="bhk" value={form.bhk} onChange={handleChange}>
-                                        {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n} BHK</option>)}
+                                        {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} BHK</option>)}
                                     </select>
                                 </div>
                             )}
-                            {property.type === 'apartment' && (
+
+                            {(property.type === 'villa' || property.type === 'house') && (
+                                <div className="form-group">
+                                    <label className="form-label">Bathrooms</label>
+                                    <select className="form-control" name="bathrooms" value={form.bathrooms} onChange={handleChange}>
+                                        {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            {(property.type === 'commercial') && (
+                                <div className="form-group">
+                                    <label className="form-label">Washrooms</label>
+                                    <select className="form-control" name="washrooms" value={form.washrooms} onChange={handleChange}>
+                                        <option value="">Select</option>
+                                        {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            {(property.type === 'apartment' || property.type === 'commercial') && (
+                                <div className="form-group">
+                                    <label className="form-label">Floor No.</label>
+                                    <input className="form-control" type="number" name="floor" value={form.floor} onChange={handleChange} />
+                                </div>
+                            )}
+
+                            {(property.type === 'apartment' || property.type === 'house' || property.type === 'commercial') && (
+                                <div className="form-group">
+                                    <label className="form-label">Total Floors</label>
+                                    <input className="form-control" type="number" name="totalFloors" value={form.totalFloors} onChange={handleChange} />
+                                </div>
+                            )}
+
+                            {(property.type === 'apartment' || property.type === 'villa' || property.type === 'house' || property.type === 'commercial') && (
                                 <>
                                     <div className="form-group">
                                         <label className="form-label">Furnishing</label>
@@ -163,14 +228,82 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                                         </select>
                                     </div>
                                     <div className="form-group">
-                                        <label className="form-label">Floor No.</label>
-                                        <input className="form-control" type="number" name="floor" value={form.floor} onChange={handleChange} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Total Floors</label>
-                                        <input className="form-control" type="number" name="totalFloors" value={form.totalFloors} onChange={handleChange} />
+                                        <label className="form-label">Age of Property (Years)</label>
+                                        <input className="form-control" type="number" name="ageYears" value={form.ageYears} onChange={handleChange} />
                                     </div>
                                 </>
+                            )}
+
+                            {(property.type !== 'farmland') && (
+                                <div className="form-group">
+                                    <label className="form-label">Facing Direction</label>
+                                    <select className="form-control" name="facing" value={form.facing} onChange={handleChange}>
+                                        {['East', 'West', 'North', 'South', 'North-East', 'North-West', 'South-East', 'South-West'].map(d => <option key={d}>{d}</option>)}
+                                    </select>
+                                </div>
+                            )}
+
+                            {property.type === 'apartment' && (
+                                <div className="form-group">
+                                    <label className="form-label">Monthly Maintenance (₹)</label>
+                                    <input className="form-control" type="number" name="maintenance" value={form.maintenance} onChange={handleChange} />
+                                </div>
+                            )}
+
+                            {property.type === 'commercial' && (
+                                <>
+                                    <div className="form-group">
+                                        <label className="form-label">Property Sub-Type</label>
+                                        <select className="form-control" name="commercialType" value={form.commercialType} onChange={handleChange}>
+                                            {['Shop', 'Office Space', 'Showroom', 'Complex'].map(t => <option key={t}>{t}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Floor Details</label>
+                                        <input className="form-control" name="floorDetails" value={form.floorDetails} onChange={handleChange} />
+                                    </div>
+                                </>
+                            )}
+
+                            {property.type === 'plot' && (
+                                <div className="form-group">
+                                    <label className="form-label">Plot Dimensions</label>
+                                    <input className="form-control" name="plotDimensions" value={form.plotDimensions} onChange={handleChange} placeholder="e.g. 30x60 ft" />
+                                </div>
+                            )}
+
+                            {property.type === 'farmland' && (
+                                <>
+                                    <div className="form-group">
+                                        <label className="form-label">Total Land Area</label>
+                                        <input className="form-control" name="totalLandArea" value={form.totalLandArea} onChange={handleChange} placeholder="e.g. 5 Acres" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Price per Acre (₹)</label>
+                                        <input className="form-control" type="number" name="pricePerAcre" value={form.pricePerAcre} onChange={handleChange} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Land Type</label>
+                                        <select className="form-control" name="landType" value={form.landType} onChange={handleChange}>
+                                            <option value="">Select Land Type</option>
+                                            <option>Dry Land</option>
+                                            <option>Wet Land</option>
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+
+                            {(property.type !== 'house') && (
+                                <div className="form-group">
+                                    <label className="form-label">Approval</label>
+                                    <select className="form-control" name="govApprovedCertificate" value={form.govApprovedCertificate} onChange={handleChange}>
+                                        <option value="">Select Approval</option>
+                                        <option>DTCP Approved</option>
+                                        <option>RERA Approved</option>
+                                        <option>DTCP &amp; RERA Approved</option>
+                                        <option>Not Available</option>
+                                    </select>
+                                </div>
                             )}
                             <div className="form-group">
                                 <label className="form-label">Status</label>
@@ -198,11 +331,11 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                             </div>
                         </div>
 
-                        {(['apartment', 'villa', 'house', 'commercial'].includes(property.type)) && (
+                        {currentAmenities.length > 0 && (
                             <div className="form-group" style={{ marginTop: 14 }}>
                                 <label className="form-label">Amenities</label>
                                 <div className="checkbox-group">
-                                    {AMENITY_OPTIONS.map(a => (
+                                    {currentAmenities.map(a => (
                                         <label key={a} className="checkbox-item">
                                             <input
                                                 type="checkbox"
@@ -287,7 +420,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                         </div>
                     </div>
 
-                    <div className="modal-footer">
+                    <div className="pm-footer">
                         <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>
                             Cancel
                         </button>
@@ -299,6 +432,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

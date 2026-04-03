@@ -633,12 +633,13 @@ tbody td .name-cell {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  z-index: 1000;
+  background: rgba(15, 23, 42, 0.75); /* professional dark backdrop */
+  z-index: 99999; /* must sit above protected layout, sidebar, header */
   display: flex;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   animation: fadeIn 0.2s ease;
 }
 
@@ -646,11 +647,13 @@ tbody td .name-cell {
   background: var(--card-bg);
   border: 1px solid var(--card-border);
   border-radius: var(--radius);
-  width: 94%;
-  max-width: 980px;
-  max-height: 92vh;
+  width: min(1100px, calc(100vw - 48px));
+  max-width: 100%;
+  max-height: calc(100vh - 48px);
   overflow-y: auto;
-  animation: slideUp 0.25s ease;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  position: relative;
 }
 
 .modal-header {

@@ -50,11 +50,12 @@ export function AuthProvider({ children }) {
 
             // Build a safe user object from whatever the API returns
             const safeUser = {
-                id:     data?.id     || data?.userId    || '',
-                email:  data?.email  || data?.emailid   || '',
-                name:   data?.name   || data?.fullName  || username,
-                role:   (data?.role  || data?.userRole  || 'admin').toLowerCase(),
-                avatar: (data?.name  || username)[0]?.toUpperCase() || 'U',
+                id:       data?.id       || data?.userId    || '',
+                email:    data?.email    || data?.emailid   || '',
+                name:     data?.name     || data?.fullName  || username,
+                username: data?.username || username || '',
+                role:     (data?.role    || data?.userRole  || 'admin').toLowerCase(),
+                avatar:   (data?.name    || username)[0]?.toUpperCase() || 'U',
             };
 
             localStorage.setItem('re_admin_user', JSON.stringify(safeUser));

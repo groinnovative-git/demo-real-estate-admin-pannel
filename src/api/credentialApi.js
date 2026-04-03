@@ -59,6 +59,7 @@ export const updateCredential = async (id, payload) => {
         name: payload.name,
         username: payload.username,
         email: payload.emailid, // Send as 'email' per swagger
+        ...(payload.role ? { role: payload.role } : {}),
         ...(payload.password && payload.password.trim() ? { password: payload.password } : {})
     };
     const res = await axiosInstance.put(`/api/Auth/UpdateUserCrediential`, requestPayload);

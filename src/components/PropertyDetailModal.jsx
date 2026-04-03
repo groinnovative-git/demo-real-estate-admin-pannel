@@ -1,25 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { X, MapPin, Bed, Maximize2, Calendar, CheckCircle } from 'lucide-react';
 import VideoPreviewCard from './VideoPreviewCard';
 import VideoModal from './VideoModal';
 import { extractYouTubeVideoId } from './PropertyVideoSection';
+import './PropertyModalPremium.css';
 
 const TYPE_LABELS = {
     apartment: 'Apartment', villa: 'Villa', plot: 'Plot',
     house: 'Individual House', commercial: 'Commercial Space',
+    farmland: 'Farm Land'
 };
 
 function Detail({ label, value }) {
     if (!value && value !== 0) return null;
     return (
-        <div className="prop-detail-item">
-            <span className="prop-detail-label">{label}</span>
-            <span className="prop-detail-value">{value}</span>
+        <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: 8, border: '1px solid var(--card-border)' }}>
+            <div className="pm-field-label">{label}</div>
+            <div className="pm-field-value">{value}</div>
         </div>
     );
 }
 
 export default function PropertyDetailModal({ property: p, onClose }) {
+    useEffect(() => {
+        const originalStyle = window.getComputedStyle(document.body).overflow;
+        document.body.style.overflow = 'hidden';
+        return () => { document.body.style.overflow = originalStyle; };
+    }, []);
+
     const [modalVideoId, setModalVideoId] = useState(null);
     const [modalLabel, setModalLabel]     = useState('');
 
@@ -32,32 +41,46 @@ export default function PropertyDetailModal({ property: p, onClose }) {
     function openModal(videoId, label) { setModalVideoId(videoId); setModalLabel(label); }
     function closeModal()              { setModalVideoId(null);    setModalLabel('');    }
 
-    return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" style={{ maxWidth: 780 }} onClick={e => e.stopPropagation()}>
-                <div className="modal-header">
-                    <div>
-                        <h2 style={{ fontSize: '1.1rem' }}>{p.title}</h2>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                            <span className="badge badge-gold">{TYPE_LABELS[p.type]}</span>
-                            <span className={`badge ${p.status === 'active' ? 'badge-success' : 'badge-danger'}`}>
-                                {p.status === 'active' ? 'Active' : 'Sold'}
-                            </span>
-                        </div>
+    return ReactDOM.createPortal(
+        <div className="pm-overlay" onClick={onClose}>
+            <div className="pm-modal" onClick={e => e.stopPropagation()}>
+                
+                {/* ── Header ──────────────────────────────────────────── */}
+                <div className="pm-header">
+                    <div className="pm-header-left">
+                        <div className="pm-header-title" style={{ fontSize: '1.1rem' }}>{p.title}</div>
                     </div>
-                    <button className="modal-close" onClick={onClose}><X size={20} /></button>
+                    <div className="pm-header-right">
+                        <span className={`pm-header-badge ${p.status === 'active' ? 'active-badge' : 'sold-badge'}`}>
+                            <span className="pm-dot" />
+                            {p.status === 'active' ? 'Active' : 'Sold'}
+                        </span>
+                        <button className="pm-close" onClick={onClose}>
+                            <X size={17} />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="modal-body">
+                {/* ── Top Status Area ─────────────────────────────────── */}
+                <div className="pm-status-bar">
+                    <span className="pm-status-bar-label">Summary</span>
+                    <div className="pm-status-pills">
+                        <span className="pm-status-pill" style={{ '--pill-color': '#d49830', '--pill-bg': '#fef3c7', pointerEvents: 'none', background: '#fef3c7', borderWidth: 2, fontWeight: 700 }}>
+                            {TYPE_LABELS[p.type] || p.type}
+                        </span>
+                    </div>
+                </div>
+
+                <div className="pm-body">
                     {/* Image Gallery */}
                     {p.images && p.images.length > 0 ? (
-                        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', marginBottom: 20, paddingBottom: 4 }}>
+                        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
                             {p.images.map((src, i) => (
                                 <img
                                     key={i}
                                     src={src}
                                     alt={`${p.title} ${i + 1}`}
-                                    style={{ height: 220, minWidth: 320, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                                    style={{ height: 220, minWidth: 320, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: '1px solid var(--card-border)' }}
                                     onError={(e) => { e.target.src = `https://placehold.co/320x220/f1f5f9/f5b642?text=${p.type}`; }}
                                 />
                             ))}
@@ -66,12 +89,12 @@ export default function PropertyDetailModal({ property: p, onClose }) {
                         <img
                             src={`https://placehold.co/780x240/f1f5f9/f5b642?text=${p.type}`}
                             alt={p.title}
-                            style={{ width: '100%', height: 240, objectFit: 'cover', borderRadius: 8, marginBottom: 20 }}
+                            style={{ width: '100%', height: 240, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
                         />
                     )}
 
                     {/* Location + Listed date */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 10 }}>
                         <div>
                             {p.location && (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
@@ -86,61 +109,96 @@ export default function PropertyDetailModal({ property: p, onClose }) {
                         </div>
                     </div>
 
+                    <div className="pm-section-title">Property Details</div>
+
                     {/* Details Grid */}
-                    <div className="prop-details-grid">
-                        <Detail label="Type"           value={TYPE_LABELS[p.type]} />
-                        <Detail label="BHK / Bedrooms" value={p.bhk ? `${p.bhk} BHK` : undefined} />
-                        <Detail label="Area"           value={p.area ? `${p.area} sqft` : undefined} />
-                        <Detail label="Plot Area"      value={p.plotArea ? `${p.plotArea} sqft` : undefined} />
-                        <Detail label="Floor"          value={p.floor ? `${p.floor} of ${p.totalFloors}` : undefined} />
-                        <Detail label="Furnishing"     value={p.furnishing} />
-                        <Detail label="Facing"         value={p.facing} />
-                        <Detail label="Age"            value={p.ageYears !== undefined ? `${p.ageYears} year${p.ageYears !== 1 ? 's' : ''}` : undefined} />
-                        <Detail label="Maintenance"    value={p.maintenance ? `₹${p.maintenance}/month` : undefined} />
-                        <Detail label="Dimensions"     value={p.dimensions} />
-                        <Detail label="Zone"           value={p.zone} />
-                        <Detail label="Road Width"     value={p.roadWidth} />
-                        <Detail label="Space Type"     value={p.spaceType} />
-                        <Detail label="Cabins"         value={p.cabins} />
-                        <Detail label="Washrooms"      value={p.washrooms} />
-                        <Detail label="Power Load"     value={p.powerLoad} />
-                        <Detail label="Garden"         value={p.garden !== undefined ? (p.garden ? 'Yes' : 'No') : undefined} />
-                        <Detail label="Swimming Pool"  value={p.pool !== undefined ? (p.pool ? 'Yes' : 'No') : undefined} />
-                        <Detail label="Corner Plot"    value={p.cornerPlot !== undefined ? (p.cornerPlot ? 'Yes' : 'No') : undefined} />
+                    <div className="pm-details-grid">
+                        <Detail label="Type"           value={TYPE_LABELS[p.type] || p.type} />
+                        <Detail label="Price"          value={p.price ? `₹${Number(p.price).toLocaleString('en-IN')}` : undefined} />
+                        {(p.type === 'apartment' || p.type === 'commercial' || p.type === 'villa' || p.type === 'house') && (
+                            <Detail label="Area"           value={p.area ? `${p.area} sqft` : undefined} />
+                        )}
+                        {(p.type === 'plot' || p.type === 'villa' || p.type === 'house') && (
+                            <Detail label="Plot Area"      value={p.plotArea ? `${p.plotArea} sq.yd` : undefined} />
+                        )}
+                        {(p.type === 'apartment' || p.type === 'villa' || p.type === 'house') && (
+                            <Detail label="BHK / Bedrooms" value={p.bhk ? `${p.bhk} BHK` : undefined} />
+                        )}
+                        {(p.type === 'villa' || p.type === 'house') && (
+                            <Detail label="Bathrooms"      value={p.bathrooms} />
+                        )}
+                        {(p.type === 'commercial') && (
+                            <Detail label="Washrooms"      value={p.washrooms} />
+                        )}
+                        {(p.type === 'apartment' || p.type === 'commercial') && (
+                            <Detail label="Floor"          value={p.floor ? `${p.floor}${p.totalFloors ? ` of ${p.totalFloors}` : ''}` : undefined} />
+                        )}
+                        {(p.type === 'house') && (
+                            <Detail label="Total Floors"   value={p.totalFloors} />
+                        )}
+                        {(p.type === 'apartment' || p.type === 'villa' || p.type === 'house' || p.type === 'commercial') && (
+                            <>
+                                <Detail label="Furnishing"     value={p.furnishing} />
+                                <Detail label="Age"            value={p.ageYears !== undefined ? `${p.ageYears} year${p.ageYears !== 1 ? 's' : ''}` : undefined} />
+                            </>
+                        )}
+                        {(p.type !== 'farmland') && (
+                            <Detail label="Facing"         value={p.facing} />
+                        )}
+                        {(p.type === 'apartment') && (
+                            <Detail label="Maintenance"    value={p.maintenance ? `₹${p.maintenance}/month` : undefined} />
+                        )}
+                        {(p.type === 'commercial') && (
+                            <>
+                                <Detail label="Sub-Type"       value={p.commercialType} />
+                                <Detail label="Floor Details"  value={p.floorDetails} />
+                            </>
+                        )}
+                        {(p.type === 'plot') && (
+                            <Detail label="Dimensions"     value={p.plotDimensions} />
+                        )}
+                        {(p.type === 'farmland') && (
+                            <>
+                                <Detail label="Total Land Area" value={p.totalLandArea} />
+                                <Detail label="Price Per Acre"  value={p.pricePerAcre ? `₹${p.pricePerAcre}` : undefined} />
+                                <Detail label="Land Type"       value={p.landType} />
+                            </>
+                        )}
+                        {(p.type !== 'house') && (
+                            <Detail label="Approval" value={p.govApprovedCertificate || undefined} />
+                        )}
                         <Detail label="Loan Support"   value={p.loanSupport !== undefined ? (p.loanSupport ? 'Available' : 'Not Available') : undefined} />
                     </div>
 
                     {/* Amenities */}
                     {p.amenities && p.amenities.length > 0 && (
-                        <div style={{ marginTop: 16 }}>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amenities</div>
+                        <>
+                            <div className="pm-section-title" style={{ marginTop: 10 }}>Amenities</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                                 {p.amenities.map(a => (
-                                    <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fef3c7', color: 'var(--gold-dark)', padding: '4px 12px', borderRadius: 999, fontSize: '0.78rem', fontWeight: 500 }}>
-                                        <CheckCircle size={12} /> {a}
+                                    <div key={a} style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#fef3c7', color: 'var(--gold-dark)', padding: '5px 14px', borderRadius: 999, fontSize: '0.78rem', fontWeight: 500, border: '1px solid #fde68a' }}>
+                                        <CheckCircle size={13} /> {a}
                                     </div>
                                 ))}
                             </div>
-                        </div>
+                        </>
                     )}
 
                     {/* Video Previews */}
                     {hasVideos && (
-                        <div style={{ marginTop: 24 }}>
-                            <div className="section-label" style={{ marginBottom: 10 }}>Property Videos</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+                        <div style={{ marginTop: 10 }}>
+                            <div className="pm-section-title">Property Videos</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
                                 {shortId && (
                                     <VideoPreviewCard
                                         label="Short Video"
                                         videoId={shortId}
-                                        onPlay={() => openModal(shortId, '1 Min Video — Short Walkthrough')}
                                     />
                                 )}
                                 {fullId && (
                                     <VideoPreviewCard
                                         label="Full Walkthrough"
                                         videoId={fullId}
-                                        onPlay={() => openModal(fullId, 'Full Property Walkthrough')}
                                     />
                                 )}
                             </div>
@@ -149,14 +207,14 @@ export default function PropertyDetailModal({ property: p, onClose }) {
 
                     {/* Google Maps Embed */}
                     {p.mapEmbedSrc && (
-                        <div style={{ marginTop: 24 }}>
-                            <div className="section-label" style={{ marginBottom: 10 }}>Property Location</div>
+                        <div style={{ marginTop: 10 }}>
+                            <div className="pm-section-title">Property Location</div>
                             <iframe
                                 src={p.mapEmbedSrc}
                                 title="Property Location Map"
                                 width="100%"
                                 height="280"
-                                style={{ border: 0, borderRadius: 8, display: 'block' }}
+                                style={{ border: '1px solid var(--card-border)', borderRadius: 12, display: 'block' }}
                                 allowFullScreen
                                 loading="lazy"
                                 referrerPolicy="no-referrer-when-downgrade"
@@ -166,9 +224,11 @@ export default function PropertyDetailModal({ property: p, onClose }) {
 
                     {/* Description */}
                     {p.description && (
-                        <div style={{ marginTop: 16 }}>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Description</div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.7 }}>{p.description}</p>
+                        <div style={{ marginTop: 10 }}>
+                            <div className="pm-section-title">Description</div>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', lineHeight: 1.7, background: '#f8fafc', padding: '16px', borderRadius: 8, border: '1px solid var(--card-border)' }}>
+                                {p.description}
+                            </p>
                         </div>
                     )}
                 </div>
@@ -181,36 +241,7 @@ export default function PropertyDetailModal({ property: p, onClose }) {
                 videoLabel={modalLabel}
                 onClose={closeModal}
             />
-
-            <style>{`
-        .prop-details-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-        }
-        .prop-detail-item {
-          background: #f8f9fa;
-          border: 1px solid var(--card-border);
-          border-radius: 8px;
-          padding: 10px 12px;
-        }
-        .prop-detail-label {
-          display: block;
-          font-size: 0.72rem;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          margin-bottom: 3px;
-        }
-        .prop-detail-value {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-        @media (max-width: 600px) {
-          .prop-details-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-      `}</style>
-        </div>
+        </div>,
+        document.body
     );
 }

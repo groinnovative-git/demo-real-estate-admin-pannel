@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
-    LayoutDashboard, Users, ChevronDown, ChevronRight,
-    LogOut, Building, Home, TreePine, Store, Landmark, Plus, Building2, KeyRound, Leaf
+    LayoutDashboard, Users,
+    Building, Home, TreePine, Store, Landmark, Building2, KeyRound, Leaf
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
 import starLogoImg from '../assets/starlogo.png';
-import logo1Img from '../assets/logo1.png';
+import logo1Img from '../assets/Star.png';
 
 const PROPERTY_TYPES = [
     { id: 'apartment', label: 'Apartment', icon: Building },
@@ -19,16 +19,10 @@ const PROPERTY_TYPES = [
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {
-    const { user, logout, isAdmin, isSuperAdmin, isManager } = useAuth();
+    const { isAdmin, isSuperAdmin, isManager } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobile, setIsMobile] = useState(() => window.innerWidth <= 768);
-    const [addOpen, setAddOpen] = useState(false);
-
-    // True whenever any /add-property/* child is the active route
-    const isAddPropertyActive = location.pathname.startsWith('/add-property');
-    const popoverRef = useRef(null);
-    const triggerRef = useRef(null);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -37,38 +31,6 @@ export default function Sidebar({ collapsed, onToggle }) {
     }, []);
 
     const showFull = !collapsed || isMobile;
-
-    // Close popover on outside click (collapsed mode)
-    useEffect(() => {
-        if (!collapsed || !addOpen) return;
-        const handleClick = (e) => {
-            if (
-                popoverRef.current && !popoverRef.current.contains(e.target) &&
-                triggerRef.current && !triggerRef.current.contains(e.target)
-            ) {
-                setAddOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClick);
-        return () => document.removeEventListener('mousedown', handleClick);
-    }, [collapsed, addOpen]);
-
-    // Close dropdown when switching between collapsed/expanded
-    useEffect(() => {
-        setAddOpen(false);
-    }, [collapsed]);
-
-    // Auto-expand when navigating to any add-property child (including page refresh)
-    useEffect(() => {
-        if (location.pathname.startsWith('/add-property')) {
-            setAddOpen(true);
-        }
-    }, [location.pathname]);
-
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
 
     return (
         <aside className={`sidebar ${collapsed && !isMobile ? 'collapsed' : ''} ${collapsed && isMobile ? 'mobile-hidden' : ''}`}>
@@ -108,63 +70,22 @@ export default function Sidebar({ collapsed, onToggle }) {
                 <div className="sidebar-divider" />
                 {showFull && <div className="sidebar-section-label">Add Property</div>}
 
-                {/* Add Property Dropdown */}
-                <div className="sidebar-dropdown-wrap" style={{ position: 'relative' }}>
-                    <button
-                        ref={triggerRef}
-                        className={`sidebar-link sidebar-dropdown-btn ${addOpen ? 'open' : ''} ${isAddPropertyActive || addOpen ? 'active' : ''}`}
-                        onClick={() => setAddOpen(!addOpen)}
-                        title="Add Property"
+                {/* Static Add Property Links (No Dropdown) */}
+                {PROPERTY_TYPES.map(({ id, label, icon: Icon }) => (
+                    <NavLink
+                        key={id}
+                        to={`/add-property/${id}`}
+                        className={({ isActive }) => `sidebar-link sidebar-property-link ${isActive ? 'active' : ''}`}
+                        title={`Add ${label}`}
                     >
-                        <Plus size={20} />
-                        {showFull && (
-                            <>
-                                <span>Add Property</span>
-                                <span className="sidebar-chevron">{addOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</span>
-                            </>
-                        )}
-                    </button>
-
-                    {/* Expanded mode: inline submenu */}
-                    {showFull && addOpen && (
-                        <div className="sidebar-submenu">
-                            {PROPERTY_TYPES.map(({ id, label, icon: Icon }) => (
-                                <button
-                                    key={id}
-                                    className={`sidebar-sub-link${location.pathname === `/add-property/${id}` ? ' active' : ''}`}
-                                    onClick={() => navigate(`/add-property/${id}`)}
-                                >
-                                    <Icon size={17} />
-                                    <span>{label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Collapsed mode: floating popover */}
-                    {!showFull && addOpen && (
-                        <div ref={popoverRef} className="sidebar-popover">
-                            <div className="sidebar-popover-title">Add Property</div>
-                            {PROPERTY_TYPES.map(({ id, label, icon: Icon }) => (
-                                <button
-                                    key={id}
-                                    className={`sidebar-popover-link${location.pathname === `/add-property/${id}` ? ' active' : ''}`}
-                                    onClick={() => {
-                                        navigate(`/add-property/${id}`);
-                                        setAddOpen(false);
-                                    }}
-                                >
-                                    <Icon size={16} />
-                                    <span>{label}</span>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                        <Icon size={20} />
+                        {showFull && <span>{label}</span>}
+                    </NavLink>
+                ))}
             </nav>
 
             {/* User / Logout */}
-            <div className="sidebar-footer">
+            {/* <div className="sidebar-footer">
                 <div className="sidebar-user">
                     <div className="sidebar-avatar">{user?.avatar || user?.name?.[0]}</div>
                     {showFull && (
@@ -177,7 +98,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                 <button className="sidebar-logout" onClick={handleLogout} title="Logout">
                     <LogOut size={18} />
                 </button>
-            </div>
+            </div> */}
         </aside>
     );
 }

@@ -64,7 +64,7 @@
 /* ── Nav ── */
 .sidebar-nav {
     flex: 1;
-    padding: 12px 12px;
+    padding: 12px 12px 40px;
     display: flex;
     flex-direction: column;
     gap: 2px;

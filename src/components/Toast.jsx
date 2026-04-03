@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react';
 import './Toast.css';
 
@@ -27,13 +28,14 @@ export default function Toast({ message, type = 'error', onClose, duration = 350
 
     const Icon = ICON_MAP[type] || AlertCircle;
 
-    return (
+    return ReactDOM.createPortal(
         <div className={`toast toast--${type}`} role="alert">
             <Icon size={18} className="toast__icon" />
             <span className="toast__msg">{message}</span>
             <button type="button" className="toast__close" onClick={onClose} aria-label="Dismiss">
                 <X size={14} />
             </button>
-        </div>
+        </div>,
+        document.body
     );
 }

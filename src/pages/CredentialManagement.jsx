@@ -65,10 +65,20 @@ function ResetCredentialModal({ credential, onClose, onSaved }) {
         }
         setSaving(true);
         try {
-            await updateCredential(credential.id, { name, username, emailid, password: newPassword });
+            await updateCredential(credential.id, { name, username, emailid, password: newPassword, role: credential.role });
             onSaved(credential.id, { name, username, emailid, password: newPassword });
-        } catch {
-            setErrors({ submit: 'Failed to reset user. Try again.' });
+        } catch (error) {
+            let errorMsg = 'Failed to reset user. Try again.';
+            if (error?.response?.data) {
+                if (typeof error.response.data === 'string') {
+                    errorMsg = error.response.data;
+                } else if (error.response.data.message) {
+                    errorMsg = error.response.data.message;
+                } else if (error.message) {
+                    errorMsg = error.message;
+                }
+            }
+            setErrors({ submit: errorMsg });
             setSaving(false);
         }
     };
@@ -214,8 +224,18 @@ function AddCredentialModal({ role, onClose, onCreated }) {
         try {
             const newCred = await createCredential({ name, username, emailid, password, role });
             onCreated(newCred);
-        } catch {
-            setErrors({ submit: 'Failed to create user. Try again.' });
+        } catch (error) {
+            let errorMsg = 'Failed to create user. Try again.';
+            if (error?.response?.data) {
+                if (typeof error.response.data === 'string') {
+                    errorMsg = error.response.data;
+                } else if (error.response.data.message) {
+                    errorMsg = error.response.data.message;
+                } else if (error.message) {
+                    errorMsg = error.message;
+                }
+            }
+            setErrors({ submit: errorMsg });
             setSaving(false);
         }
     };
@@ -384,7 +404,8 @@ export default function CredentialManagement() {
     const [deleteCred, setDeleteCred] = useState(null);
     const [deleting, setDeleting]     = useState(false);
 
-    // Search and Pagination
+    // Tabs, Search and Pagination
+    const [activeRole, setActiveRole]   = useState('Admin');
     const [searchTerm, setSearchTerm]   = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const ROWS_PER_PAGE = 10;
@@ -425,8 +446,14 @@ export default function CredentialManagement() {
         showToast('success', 'Credentials updated successfully.');
     };
 
-    const handleCreated = (newCred) => {
-        setCredentials(prev => [...prev, newCred]);
+    const handleCreated = async (newCred) => {
+        // Refetch credentials immediately so we get the accurate backend-generated userId
+        try {
+            const data = await getCredentials();
+            setCredentials(data);
+        } catch {
+            setCredentials(prev => [...prev, newCred]);
+        }
         setAddRole(null);
         showToast('success', `${newCred.role} added successfully.`);
     };
@@ -459,16 +486,21 @@ export default function CredentialManagement() {
         });
     }, [credentials, isAdmin, isSuperAdmin, isManager, user]);
 
-    // Apply Search Term
+    // Apply Role Tab + Search Term
+    // When searching: search across ALL roles (ignore active tab)
+    // When not searching: show only active tab's role
     const filteredCredentials = useMemo(() => {
-        if (!searchTerm.trim()) return permittedCredentials;
-        const lowSearch = searchTerm.toLowerCase();
-        return permittedCredentials.filter(c => 
-            c.username?.toLowerCase().includes(lowSearch) || 
-            c.emailid?.toLowerCase().includes(lowSearch) || 
-            c.role?.toLowerCase().includes(lowSearch)
-        );
-    }, [permittedCredentials, searchTerm]);
+        const trimmed = searchTerm.trim();
+        if (trimmed) {
+            const low = trimmed.toLowerCase();
+            return permittedCredentials.filter(c =>
+                c.username?.toLowerCase().includes(low) ||
+                c.emailid?.toLowerCase().includes(low) ||
+                (c.name || '').toLowerCase().includes(low)
+            );
+        }
+        return permittedCredentials.filter(c => c.role === activeRole);
+    }, [permittedCredentials, activeRole, searchTerm]);
 
     // Apply Pagination
     const totalPages = Math.ceil(filteredCredentials.length / ROWS_PER_PAGE) || 1;
@@ -477,10 +509,10 @@ export default function CredentialManagement() {
         return filteredCredentials.slice(startIndex, startIndex + ROWS_PER_PAGE);
     }, [filteredCredentials, currentPage]);
 
-    // Reset pagination when search changes
+    // Reset pagination when search or tab changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [searchTerm, activeRole]);
 
     // Permission checks for Table Actions
     const checkCanEdit = (cred) => {
@@ -520,11 +552,19 @@ export default function CredentialManagement() {
                 </div>
             </div>
 
-            <div className="cred-info-banner">
-                <ShieldCheck size={16} />
-                <span>
-                    <strong>Role-Based Access</strong> — Only permitted users can edit or delete accounts. Roles are fixed safely.
-                </span>
+            {/* Role Tabs */}
+            <div className="cred-role-tabs">
+                {['Admin', 'Manager', 'Employee'].map(role => {
+                    return (
+                        <button
+                            key={role}
+                            className={`cred-role-tab${activeRole === role ? ' cred-role-tab--active' : ''}`}
+                            onClick={() => setActiveRole(role)}
+                        >
+                            {role}
+                        </button>
+                    );
+                })}
             </div>
 
             {loading && (

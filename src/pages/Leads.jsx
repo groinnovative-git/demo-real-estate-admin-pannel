@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import {
     Search, Filter, X, Phone, Mail, MessageSquare, Calendar,
     ChevronRight, ChevronLeft, Check, Building2, Clock, User,
-    ArrowRight, Loader, AlertCircle, Home,
+    ArrowRight, Loader, AlertCircle, Home, Eye
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { useAuth } from '../context/AuthContext';
@@ -58,15 +59,14 @@ function formatDateTime(dateStr) {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   LEAD DRAWER  (right-side detail popup)
+   LEAD MODAL  (centered 2-column popup)
    ───────────────────────────────────────────────────────────────────────── */
-function LeadDrawer({ lead, onClose, onStatusChange, auditLog, auditLoading, properties }) {
+function LeadModal({ lead, onClose, onStatusChange, auditLog, auditLoading, properties }) {
     if (!lead) return null;
 
     const sc = getStatusConfig(lead.leadStatus);
     const currentKey = getStatusKey(lead.leadStatus);
 
-    // Resolve property name from properties context
     const propertyName = useMemo(() => {
         if (lead.propertyName) return lead.propertyName;
         if (!lead.propertyId) return '—';
@@ -74,108 +74,133 @@ function LeadDrawer({ lead, onClose, onStatusChange, auditLog, auditLoading, pro
         return prop ? prop.title : '—';
     }, [lead, properties]);
 
-    return (
-        <>
-            <div className="drawer-overlay" onClick={onClose} />
-            <div className="drawer lead-drawer">
-                {/* ── Sticky Header ─────────────────────────────────── */}
-                <div className="drawer-header">
-                    <div>
-                        <h2 style={{ fontSize: '1.08rem', fontWeight: 700 }}>{lead.fullName}</h2>
-                        <span style={{ fontSize: '0.73rem', color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+    useEffect(() => {
+        const handler = (e) => { if (e.key === 'Escape') onClose(); };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [onClose]);
+
+    return ReactDOM.createPortal(
+        <div className="lm-overlay" onClick={onClose}>
+            <div className="lm-modal" role="dialog" aria-modal="true" onClick={e => e.stopPropagation()}>
+
+                {/* ── Header ──────────────────────────────────────────── */}
+                <div className="lm-header">
+                    <div className="lm-header-left">
+                        <div className="lm-header-title">{lead.fullName}</div>
+                        <span className="lm-header-id">
                             Lead #{(lead.contactId || '').slice(0, 8).toUpperCase()}
                         </span>
                     </div>
-                    <button className="modal-close" onClick={onClose}><X size={20} /></button>
+                    <div className="lm-header-right">
+                        <span
+                            className="lm-header-status-badge"
+                            style={{ background: sc.bg, color: sc.color, border: `1px solid ${sc.color}35` }}
+                        >
+                            <span className="lm-header-status-dot" style={{ background: sc.color }} />
+                            {sc.label}
+                        </span>
+                        <button className="lm-close" onClick={onClose} aria-label="Close modal">
+                            <X size={17} />
+                        </button>
+                    </div>
                 </div>
 
-                {/* ── Scrollable body ───────────────────────────────── */}
-                <div className="lead-drawer-body">
-                    {/* Status Controls */}
-                    <div className="lead-drawer-section">
-                        <div className="lead-section-label">Status</div>
-                        <div className="lead-status-pills">
-                            {STATUS_KEYS.map(key => {
-                                const cfg = STATUS_CONFIG[key];
-                                const isActive = currentKey === key;
-                                return (
-                                    <button
-                                        key={key}
-                                        className={`lead-status-pill ${isActive ? 'lead-status-pill--active' : ''}`}
-                                        style={{
-                                            '--pill-color': cfg.color,
-                                            '--pill-bg': cfg.bg,
-                                        }}
-                                        onClick={() => onStatusChange(lead, key)}
-                                    >
-                                        {isActive && <Check size={13} strokeWidth={3} />}
-                                        {cfg.label}
-                                    </button>
-                                );
-                            })}
+                {/* ── Status Toolbar ──────────────────────────────────── */}
+                <div className="lm-status-bar">
+                    <span className="lm-status-bar-label">Status</span>
+                    <div className="lm-status-pills">
+                        {STATUS_KEYS.map(key => {
+                            const cfg = STATUS_CONFIG[key];
+                            const isActive = currentKey === key;
+                            return (
+                                <button
+                                    key={key}
+                                    className={`lm-status-pill ${isActive ? 'lm-status-pill--active' : ''}`}
+                                    style={{ '--pill-color': cfg.color, '--pill-bg': cfg.bg }}
+                                    onClick={() => onStatusChange(lead, key)}
+                                >
+                                    {isActive && <Check size={12} strokeWidth={3} />}
+                                    {cfg.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* ── Body: 2-column ──────────────────────────────────── */}
+                <div className="lm-body">
+
+                    {/* LEFT — Contact Details */}
+                    <div className="lm-left">
+                        <div className="lm-section-title">
+                            <User size={13} /> Contact Details
+                        </div>
+
+                        <div className="lm-field">
+                            <div className="lm-field-icon"><User size={14} /></div>
+                            <div>
+                                <div className="lm-field-label">Customer Name</div>
+                                <div className="lm-field-value">{lead.fullName || '—'}</div>
+                            </div>
+                        </div>
+
+                        <div className="lm-field">
+                            <div className="lm-field-icon"><Mail size={14} /></div>
+                            <div>
+                                <div className="lm-field-label">Email ID</div>
+                                <div className="lm-field-value lm-field-value--mono">{lead.email || '—'}</div>
+                            </div>
+                        </div>
+
+                        <div className="lm-field">
+                            <div className="lm-field-icon"><Phone size={14} /></div>
+                            <div>
+                                <div className="lm-field-label">Phone Number</div>
+                                <div className="lm-field-value">{lead.phoneNumber || '—'}</div>
+                            </div>
+                        </div>
+
+                        <div className="lm-field">
+                            <div className="lm-field-icon"><ChevronRight size={14} /></div>
+                            <div>
+                                <div className="lm-field-label">Interest</div>
+                                <div className="lm-field-value">{lead.customerInterest || '—'}</div>
+                            </div>
+                        </div>
+
+                        <div className="lm-field">
+                            <div className="lm-field-icon"><Home size={14} /></div>
+                            <div>
+                                <div className="lm-field-label">Property Name</div>
+                                <div className="lm-field-value">{propertyName}</div>
+                            </div>
+                        </div>
+
+                        <div className="lm-field">
+                            <div className="lm-field-icon"><Calendar size={14} /></div>
+                            <div>
+                                <div className="lm-field-label">Date Received</div>
+                                <div className="lm-field-value">{formatDate(lead.createdDate)}</div>
+                            </div>
+                        </div>
+
+                        <div className="lm-message-wrap">
+                            <div className="lm-message-label">
+                                <MessageSquare size={13} /> Message
+                            </div>
+                            <p className="lm-message-box">
+                                {lead.message || 'No message provided.'}
+                            </p>
                         </div>
                     </div>
 
-                    <hr className="lead-divider" />
+                    {/* Vertical Divider */}
+                    <div className="lm-col-divider" />
 
-                    {/* Contact Details */}
-                    <div className="lead-drawer-section">
-                        <div className="lead-detail-grid">
-                            <div className="lead-info-row">
-                                <Mail size={15} />
-                                <div>
-                                    <div className="lead-info-label">Email</div>
-                                    <div className="lead-info-value">{lead.email || '—'}</div>
-                                </div>
-                            </div>
-                            <div className="lead-info-row">
-                                <Phone size={15} />
-                                <div>
-                                    <div className="lead-info-label">Phone</div>
-                                    <div className="lead-info-value">{lead.phoneNumber || '—'}</div>
-                                </div>
-                            </div>
-                            <div className="lead-info-row">
-                                <ChevronRight size={15} />
-                                <div>
-                                    <div className="lead-info-label">Interest</div>
-                                    <div className="lead-info-value">{lead.customerInterest || '—'}</div>
-                                </div>
-                            </div>
-                            <div className="lead-info-row">
-                                <Home size={15} />
-                                <div>
-                                    <div className="lead-info-label">Property Name</div>
-                                    <div className="lead-info-value">{propertyName}</div>
-                                </div>
-                            </div>
-                            <div className="lead-info-row">
-                                <Calendar size={15} />
-                                <div>
-                                    <div className="lead-info-label">Date Received</div>
-                                    <div className="lead-info-value">{formatDate(lead.createdDate)}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <hr className="lead-divider" />
-
-                    {/* Message */}
-                    <div className="lead-drawer-section">
-                        <div className="lead-section-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <MessageSquare size={13} /> Message
-                        </div>
-                        <p className="lead-message-box">
-                            {lead.message || 'No message provided.'}
-                        </p>
-                    </div>
-
-                    <hr className="lead-divider" />
-
-                    {/* Audit Trail */}
-                    <div className="lead-drawer-section">
-                        <div className="lead-section-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {/* RIGHT — Activity Log */}
+                    <div className="lm-right">
+                        <div className="lm-section-title">
                             <Clock size={13} /> Activity Log
                         </div>
 
@@ -192,22 +217,25 @@ function LeadDrawer({ lead, onClose, onStatusChange, auditLog, auditLoading, pro
                         ) : (
                             <div className="audit-timeline">
                                 {auditLog.map((entry, i) => {
-                                    const oldSt = entry.oldStatus || entry.OldStatus || entry.oldLeadStatus || '—';
-                                    const newSt = entry.newStatus || entry.NewStatus || entry.newLeadStatus || entry.leadStatus || '—';
-                                    const who   = entry.changedByUsername || entry.ChangedByUsername
+                                    let oldSt = entry.oldStatus || entry.OldStatus || entry.oldLeadStatus || '—';
+                                    let newSt = entry.newStatus || entry.NewStatus || entry.newLeadStatus || entry.leadStatus || '—';
+                                    
+                                    if (entry.description) {
+                                        const m = entry.description.match(/from '([^']+)' to '([^']+)'/i);
+                                        if (m) { oldSt = m[1]; newSt = m[2]; }
+                                    }
+
+                                    const who   = entry.name || entry.Name || entry.changedByUsername || entry.ChangedByUsername
                                                 || entry.changedBy || entry.ChangedBy
                                                 || entry.userName || entry.UserName || 'System';
-                                    const when  = entry.changedAt || entry.ChangedAt
+                                    const when  = entry.modifiedOn || entry.ModifiedOn || entry.changedAt || entry.ChangedAt
                                                 || entry.createdDate || entry.CreatedDate || '';
                                     const newCfg = getStatusConfig(newSt);
 
                                     return (
                                         <div key={i} className="audit-entry">
                                             <div className="audit-dot-col">
-                                                <span
-                                                    className="audit-dot"
-                                                    style={{ background: newCfg.color }}
-                                                />
+                                                <span className="audit-dot" style={{ background: newCfg.color }} />
                                                 {i < auditLog.length - 1 && <span className="audit-line" />}
                                             </div>
                                             <div className="audit-content">
@@ -240,7 +268,8 @@ function LeadDrawer({ lead, onClose, onStatusChange, auditLog, auditLoading, pro
                     </div>
                 </div>
             </div>
-        </>
+        </div>,
+        document.body
     );
 }
 
@@ -374,26 +403,54 @@ export default function Leads() {
                         onChange={e => setSearch(e.target.value)}
                     />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <Filter size={15} style={{ color: 'var(--text-muted)' }} />
-                    <select className="form-control" style={{ width: 150 }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                        <option value="">All Status</option>
-                        {STATUS_KEYS.map(k => (
-                            <option key={k} value={k}>{STATUS_CONFIG[k].label}</option>
-                        ))}
-                    </select>
-                    <select className="form-control" style={{ width: 180 }} value={filterInterest} onChange={e => setFilterInterest(e.target.value)}>
-                        <option value="">All Interests</option>
-                        {interests.map(i => <option key={i} value={i}>{i}</option>)}
-                    </select>
-                </div>
-                {(search || filterStatus || filterInterest) && (
-                    <button className="btn btn-ghost" onClick={() => { setSearch(''); setFilterStatus(''); setFilterInterest(''); }}>
-                        <X size={14} /> Clear
-                    </button>
-                )}
-                <div style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                    {filtered.length} lead{filtered.length !== 1 ? 's' : ''}
+                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ position: 'relative', width: 180 }}>
+                        <Filter 
+                            size={15} 
+                            style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} 
+                        />
+                        <select 
+                            className="form-control" 
+                            style={{ width: '100%', paddingLeft: 40, paddingRight: 16 }} 
+                            value={filterStatus} 
+                            onChange={e => setFilterStatus(e.target.value)}
+                        >
+                            <option value="">All Status</option>
+                            {STATUS_KEYS.map(k => (
+                                <option key={k} value={k}>{STATUS_CONFIG[k].label}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div style={{ position: 'relative', width: 200 }}>
+                        <Filter 
+                            size={15} 
+                            style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} 
+                        />
+                        <select 
+                            className="form-control" 
+                            style={{ width: '100%', paddingLeft: 40, paddingRight: 16 }} 
+                            value={filterInterest} 
+                            onChange={e => setFilterInterest(e.target.value)}
+                        >
+                            <option value="">All Interests</option>
+                            {interests.map(i => <option key={i} value={i}>{i}</option>)}
+                        </select>
+                    </div>
+
+                    {(search || filterStatus || filterInterest) && (
+                        <button 
+                            className="btn btn-ghost" 
+                            onClick={() => { setSearch(''); setFilterStatus(''); setFilterInterest(''); }}
+                            style={{ gap: 4 }}
+                        >
+                            <X size={14} /> Clear
+                        </button>
+                    )}
+
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', minWidth: 80, textAlign: 'right' }}>
+                        {filtered.length} lead{filtered.length !== 1 ? 's' : ''}
+                    </div>
                 </div>
             </div>
 
@@ -433,12 +490,13 @@ export default function Leads() {
                                 <th>Property Name</th>
                                 <th>Date</th>
                                 <th style={{ width: 120 }}>Status</th>
+                                <th style={{ width: 60, textAlign: 'center' }}>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedLeads.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
+                                    <td colSpan={9} style={{ textAlign: 'center', padding: 48, color: 'var(--text-muted)' }}>
                                         <Building2 size={32} style={{ opacity: 0.2, marginBottom: 8 }} />
                                         <div style={{ fontWeight: 600 }}>No leads found</div>
                                         <div style={{ fontSize: '0.8rem', marginTop: 4 }}>Try adjusting your search or filters</div>
@@ -481,6 +539,18 @@ export default function Leads() {
                                                     <span className="leads-status-dot" style={{ background: sc.color }} />
                                                     {sc.label}
                                                 </span>
+                                            </td>
+                                            <td style={{ textAlign: 'center' }}>
+                                                <button
+                                                    className="lead-view-btn"
+                                                    title="View lead details"
+                                                    onClick={(e) => { e.stopPropagation(); openDrawer(l); }}
+                                                    style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b', padding: '6px', borderRadius: '6px' }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--gold)'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.color = '#64748b'}
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
                                             </td>
                                         </tr>
                                     );
@@ -525,9 +595,9 @@ export default function Leads() {
                 )}
             </div>
 
-            {/* ── Drawer ──────────────────────────────────────────────── */}
+            {/* ── Modal ───────────────────────────────────────────────── */}
             {selectedLead && (
-                <LeadDrawer
+                <LeadModal
                     lead={selectedLead}
                     onClose={() => { setSelectedLead(null); setAuditLog([]); }}
                     onStatusChange={handleStatusChange}

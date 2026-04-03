@@ -101,49 +101,74 @@ const DonutTooltip = ({ active, payload }) => {
     );
 };
 
+import * as propertyApi from '../api/propertyApi';
+
 /* ═════════════════════════════════════════════════════════════════════════
    DASHBOARD COMPONENT
    ═══════════════════════════════════════════════════════════════════════ */
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { properties, activeProperties, soldProperties, leads } = useProperties();
+    const { leads } = useProperties();
 
     const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR);
     const [chartFilter, setChartFilter]   = useState('active');
 
+    const [apiCounts, setApiCounts] = useState(null);
+    const [apiDashboard, setApiDashboard] = useState(null);
+
+    React.useEffect(() => {
+        propertyApi.getCountsAndDistribution()
+            .then(res => setApiCounts(res.data))
+            .catch(err => console.error("Failed to load distribution:", err));
+    }, []);
+
+    React.useEffect(() => {
+        propertyApi.getPropertyDashboard({ year: selectedYear })
+            .then(res => setApiDashboard(res.data))
+            .catch(err => console.error("Failed to load dashboard graph:", err));
+    }, [selectedYear]);
+
+
     /* ── Stats ── */
     const stats = [
-        { label: 'Total Properties',  value: properties.length.toString(),       icon: Landmark,  color: '#86c127', gradient: GRADIENTS.green  },
-        { label: 'Active Properties', value: activeProperties.length.toString(),  icon: BadgeCheck,color: '#3B82F6', gradient: GRADIENTS.blue   },
-        { label: 'Sold Properties',   value: soldProperties.length.toString(),    icon: Handshake, color: '#ef4444', gradient: GRADIENTS.red    },
-        { label: 'Total Leads',       value: leads.length.toString(),             icon: UserCheck, color: '#f5b642', gradient: GRADIENTS.gold   },
-        { label: 'Visitors',          value: totalVisitors.toLocaleString(),      icon: Activity,  color: '#8b5cf6', gradient: GRADIENTS.purple },
+        { label: 'Total Properties',  value: apiCounts?.totalProperties ?? 0,  icon: Landmark,  color: '#86c127', gradient: GRADIENTS.green  },
+        { label: 'Active Properties', value: apiCounts?.activeProperties ?? 0, icon: BadgeCheck,color: '#3B82F6', gradient: GRADIENTS.blue   },
+        { label: 'Sold Properties',   value: apiCounts?.soldProperties ?? 0,   icon: Handshake, color: '#ef4444', gradient: GRADIENTS.red    },
+        { label: 'Total Leads',       value: apiCounts?.totalLeads ?? 0,       icon: UserCheck, color: '#f5b642', gradient: GRADIENTS.gold   },
+        { label: 'Visitors',          value: totalVisitors.toLocaleString(),   icon: Activity,  color: '#8b5cf6', gradient: GRADIENTS.purple },
     ];
 
     /* ── Chart data ── */
-    const chartData = useMemo(() =>
-        generateMonthlyData(selectedYear),
-    [selectedYear]);
+    const chartData = useMemo(() => {
+        if (!apiDashboard || !apiDashboard.graphData) return generateMonthlyData(selectedYear);
+        return apiDashboard.graphData.map(item => ({
+            label: item.monthName || MONTH_LABELS[item.month - 1],
+            active: item.activeCount || 0,
+            sold: item.soldOutCount || 0
+        }));
+    }, [apiDashboard, selectedYear]);
 
     const chartColor  = CHART_COLORS[chartFilter];
     const gradientId  = `grad_${chartFilter}`;
 
     /* ── Distribution ── */
-    const propertyTypeCounts = properties.reduce((acc, p) => {
-        acc[p.type] = (acc[p.type] || 0) + 1;
-        return acc;
-    }, {});
+    const propertyTypeData = useMemo(() => {
+        if (!apiCounts || !apiCounts.distributionByProperties) return [];
+        return apiCounts.distributionByProperties.map(entry => {
+            const nameLower = (entry.propertyType || '').toLowerCase();
+            return {
+                name: entry.propertyType,
+                value: entry.count,
+                percentage: entry.percentage,
+                color: nameLower === 'apartment' ? '#86c127' :
+                       nameLower === 'villa'     ? '#f5b642' :
+                       nameLower === 'plot'      ? '#3B82F6' :
+                       nameLower === 'house'     ? '#F59E0B' : '#EF4444',
+            };
+        });
+    }, [apiCounts]);
 
-    const propertyTypeData = Object.entries(propertyTypeCounts).map(([name, value]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
-        value,
-        color: name === 'apartment' ? '#86c127' :
-               name === 'villa'     ? '#f5b642' :
-               name === 'plot'      ? '#3B82F6' :
-               name === 'house'     ? '#F59E0B' : '#EF4444',
-    }));
-
-    const totalPropCount = properties.length || 1;
+    const totalPropCount = apiCounts?.totalProperties || 1;
 
     /* ── Latest leads ── */
     const recentLeads = useMemo(() =>
@@ -284,7 +309,7 @@ export default function Dashboard() {
                             </PieChart>
                         </ResponsiveContainer>
                         <div className="donut-center-text">
-                            <div className="donut-center-count">{properties.length}</div>
+                            <div className="donut-center-count">{totalPropCount}</div>
                             <div className="donut-center-label">Total</div>
                         </div>
                     </div>
@@ -299,7 +324,7 @@ export default function Dashboard() {
                                 <div className="donut-legend-right">
                                     <span className="donut-legend-count">{type.value}</span>
                                     <span className="donut-legend-pct">
-                                        {((type.value / totalPropCount) * 100).toFixed(0)}%
+                                        {type.percentage != null ? type.percentage.toFixed(0) : ((type.value / totalPropCount) * 100).toFixed(0)}%
                                     </span>
                                 </div>
                             </div>
@@ -312,7 +337,7 @@ export default function Dashboard() {
                     <div className="table-card-header">
                         <div className="table-card-title-wrap">
                             <h3 className="chart-title">Latest Leads</h3>
-                            <span className="leads-badge">{leads.length} Total</span>
+                            <span className="leads-badge">{apiCounts?.totalLeads ?? leads.length} Total</span>
                         </div>
                         <button
                             className="btn-text view-all-btn"
