@@ -168,6 +168,7 @@ export default function PropertyDetailModal({ property: p, onClose }) {
                             <Detail label="Approval" value={p.govApprovedCertificate || undefined} />
                         )}
                         <Detail label="Loan Support"   value={p.loanSupport !== undefined ? (p.loanSupport ? 'Available' : 'Not Available') : undefined} />
+                        {p.loanSupport && <Detail label="Loan Percentage" value={p.loanPercentage ? `${p.loanPercentage}%` : undefined} />}
                     </div>
 
                     {/* Amenities */}

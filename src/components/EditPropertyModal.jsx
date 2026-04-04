@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { X, Loader, Upload } from 'lucide-react';
+import { X, Loader, Upload, MapPin } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { buildPropertyFormData, getErrorMessage } from '../utils/propertyPayloadMapper';
 import { getAmenitiesForType } from '../data/amenitiesByPropertyType';
@@ -49,12 +49,19 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         govApprovedCertificate: property.govApprovedCertificate || '',
         status:         property.status         || 'active',
         loanSupport:    property.loanSupport    || false,
+        loanPercentage: property.loanPercentage || '',
         amenities:      Array.isArray(property.amenities) ? [...property.amenities] : [],
         description:    property.description    || '',
         shortVideoUrl:  property.shortVideoUrl  || '',
         fullVideoUrl:   property.fullVideoUrl   || '',
         mapEmbedSrc:    property.mapEmbedSrc    || '',
         images:         Array.isArray(property.images) ? [...property.images] : [],
+        // ── Nearby Locations ──
+        nearbyHospitalDist: property.nearbyHospitalDist || '', nearbyHospitalUnit: property.nearbyHospitalUnit || 'km',
+        nearbyCollegeDist: property.nearbyCollegeDist || '', nearbyCollegeUnit: property.nearbyCollegeUnit || 'km',
+        nearbySchoolDist: property.nearbySchoolDist || '', nearbySchoolUnit: property.nearbySchoolUnit || 'km',
+        nearbyStationDist: property.nearbyStationDist || '', nearbyStationUnit: property.nearbyStationUnit || 'km',
+        nearbyBusStandDist: property.nearbyBusStandDist || '', nearbyBusStandUnit: property.nearbyBusStandUnit || 'km',
     });
 
     const [imageFiles, setImageFiles] = useState([]);
@@ -62,22 +69,40 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
     const [loading, setLoading] = useState(false);
     const [error,   setError]   = useState('');
 
-    const handleImageChange = (e) => {
-        const files = Array.from(e.target.files);
-        const urls  = files.map(f => URL.createObjectURL(f));
-        setForm(f => ({ ...f, images: [...f.images, ...urls] }));
-        setImageFiles(prev => [...prev, ...files]);
+    const handleImageChange = (e, index) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const url = URL.createObjectURL(file);
+        
+        setForm(f => {
+            const newImages = [...(f.images || [])];
+            while (newImages.length < 10) newImages.push('');
+            newImages[index] = url;
+            return { ...f, images: newImages };
+        });
+
+        setImageFiles(prev => {
+            const newFiles = [...(prev || [])];
+            while (newFiles.length < 10) newFiles.push(null);
+            newFiles[index] = file;
+            return newFiles;
+        });
     };
 
-    const removeImage = (idx) => {
-        const imgUrl = form.images[idx];
-        const isNewBlob = typeof imgUrl === 'string' && imgUrl.startsWith('blob:');
-        setForm(f => ({ ...f, images: f.images.filter((_, i) => i !== idx) }));
-        if (isNewBlob) {
-            // Count blob URLs before this index to find the correct imageFiles index
-            const blobIdx = form.images.slice(0, idx).filter(u => String(u).startsWith('blob:')).length;
-            setImageFiles(prev => prev.filter((_, i) => i !== blobIdx));
-        }
+    const removeImage = (index) => {
+        setForm(f => {
+            const newImages = [...(f.images || [])];
+            while (newImages.length < 10) newImages.push('');
+            newImages[index] = '';
+            return { ...f, images: newImages };
+        });
+        setImageFiles(prev => {
+            const newFiles = [...(prev || [])];
+            while (newFiles.length < 10) newFiles.push(null);
+            newFiles[index] = null;
+            return newFiles;
+        });
     };
 
     const handleChange = (e) => {
@@ -313,20 +338,45 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                                 </select>
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Loan Support</label>
-                                <div className="loan-toggle-field">
-                                    <button
-                                        type="button"
-                                        role="switch"
-                                        aria-checked={!!form.loanSupport}
-                                        className={`loan-toggle-switch${form.loanSupport ? ' loan-toggle-switch--on' : ''}`}
-                                        onClick={() => setForm(f => ({ ...f, loanSupport: !f.loanSupport }))}
-                                    >
-                                        <span className="loan-toggle-thumb" />
-                                    </button>
-                                    <span className="loan-toggle-label">
-                                        {form.loanSupport ? 'Available' : 'Not Available'}
-                                    </span>
+                                <label className="form-label">Loan Support & Percentage</label>
+                                <div className="loan-toggle-field" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={!!form.loanSupport}
+                                            className={`loan-toggle-switch${form.loanSupport ? ' loan-toggle-switch--on' : ''}`}
+                                            onClick={() => setForm(f => ({ 
+                                                ...f, 
+                                                loanSupport: !f.loanSupport,
+                                                loanPercentage: !f.loanSupport ? f.loanPercentage : ''
+                                            }))}
+                                        >
+                                            <span className="loan-toggle-thumb" />
+                                        </button>
+                                        <span className="loan-toggle-label">
+                                            {form.loanSupport ? 'Available' : 'Not Available'}
+                                        </span>
+                                    </div>
+                                    {form.loanSupport && (
+                                        <input 
+                                            className="form-control" 
+                                            type="number" 
+                                            name="loanPercentage" 
+                                            value={form.loanPercentage} 
+                                            onChange={(e) => {
+                                                let val = parseInt(e.target.value, 10);
+                                                if (isNaN(val)) val = '';
+                                                else if (val < 1) val = 1;
+                                                else if (val > 100) val = 100;
+                                                setForm(f => ({ ...f, loanPercentage: val }));
+                                            }} 
+                                            placeholder="%"
+                                            min={1}
+                                            max={100}
+                                            style={{ width: '80px', padding: '6px 12px', minHeight: '34px', marginBottom: 0 }}
+                                        />
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -354,53 +404,138 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                             <textarea className="form-control" name="description" value={form.description} onChange={handleChange} rows={3} />
                         </div>
 
+                        {/* ── Section X: Nearby Locations ──────────────────────────── */}
+                        <div className="form-group" style={{ marginTop: 14 }}>
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <MapPin size={14} color="#0d6933" /> Nearby Locations
+                            </label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                {[
+                                    { label: 'Hospital', keyDist: 'nearbyHospitalDist', keyUnit: 'nearbyHospitalUnit' },
+                                    { label: 'College', keyDist: 'nearbyCollegeDist', keyUnit: 'nearbyCollegeUnit' },
+                                    { label: 'School', keyDist: 'nearbySchoolDist', keyUnit: 'nearbySchoolUnit' },
+                                    { label: 'Station', keyDist: 'nearbyStationDist', keyUnit: 'nearbyStationUnit' },
+                                    { label: 'Bus Stand', keyDist: 'nearbyBusStandDist', keyUnit: 'nearbyBusStandUnit' }
+                                ].map(loc => (
+                                    <div key={loc.label} className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: '0.75rem' }}>{loc.label}</label>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <input 
+                                                className="form-control" 
+                                                type="number" 
+                                                name={loc.keyDist} 
+                                                value={form[loc.keyDist]} 
+                                                onChange={handleChange} 
+                                                placeholder="Distance" 
+                                                min={0}
+                                                step="any"
+                                                style={{ flex: 1 }}
+                                            />
+                                            <select 
+                                                className="form-control" 
+                                                name={loc.keyUnit} 
+                                                value={form[loc.keyUnit]} 
+                                                onChange={handleChange}
+                                                style={{ width: '70px', flexShrink: 0 }}
+                                            >
+                                                <option value="m">m</option>
+                                                <option value="km">km</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
                         {/* ── Images ── */}
                         <div className="form-group" style={{ marginTop: 14 }}>
-                            <label className="form-label">Property Images</label>
-                            <div
-                                className="premium-upload-area"
-                                style={{ padding: '16px', cursor: 'pointer', marginBottom: 10 }}
-                                onClick={() => fileRef.current.click()}
-                            >
-                                <Upload size={18} color="#f5b642" style={{ marginBottom: 4 }} />
-                                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f172a' }}>Click to add images</div>
-                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>JPG, PNG or WebP</div>
-                                <input
-                                    ref={fileRef}
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    style={{ display: 'none' }}
-                                    onChange={handleImageChange}
-                                />
-                            </div>
-                            {form.images.length > 0 && (
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                    {form.images.map((img, i) => (
-                                        <div key={i} style={{ position: 'relative', width: 80, height: 80 }}>
-                                            <img
-                                                src={img}
-                                                alt={`img-${i}`}
-                                                style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--card-border)' }}
+                            <label className="form-label">Property Images (10 Slots)</label>
+                            <div className="premium-image-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
+                                {Array.from({ length: 10 }).map((_, i) => {
+                                    const imgUrl = form.images && form.images[i];
+                                    return (
+                                        <div 
+                                            key={i} 
+                                            className="image-upload-card" 
+                                            style={{
+                                                position: 'relative',
+                                                aspectRatio: '1',
+                                                border: '2px dashed #cbd5e1',
+                                                borderRadius: '6px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                overflow: 'hidden',
+                                                cursor: 'pointer',
+                                                backgroundColor: '#f8fafc',
+                                                transition: 'all 0.2s',
+                                                minHeight: '60px'
+                                            }}
+                                            onClick={() => !imgUrl && document.getElementById(`edit-upload-slot-${i}`).click()}
+                                        >
+                                            {imgUrl ? (
+                                                <>
+                                                    <img 
+                                                        src={imgUrl} 
+                                                        alt={`Slot ${i + 1}`} 
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                                    />
+                                                    <div style={{
+                                                        position: 'absolute',
+                                                        bottom: 0,
+                                                        left: 0,
+                                                        right: 0,
+                                                        background: 'rgba(0,0,0,0.6)',
+                                                        color: '#fff',
+                                                        fontSize: '0.65rem',
+                                                        textAlign: 'center',
+                                                        padding: '2px 0'
+                                                    }}>
+                                                        {i === 0 ? 'Thumbnail' : `Card ${i + 1}`}
+                                                    </div>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={(e) => { e.stopPropagation(); removeImage(i); }}
+                                                        style={{
+                                                            position: 'absolute',
+                                                            top: '2px',
+                                                            right: '2px',
+                                                            background: 'rgba(255, 0, 0, 0.8)',
+                                                            border: 'none',
+                                                            color: '#fff',
+                                                            borderRadius: '50%',
+                                                            width: '18px',
+                                                            height: '18px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            cursor: 'pointer',
+                                                            padding: 0
+                                                        }}
+                                                    >
+                                                        <X size={10} />
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Upload size={14} color="#94a3b8" style={{ marginBottom: '4px' }} />
+                                                    <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 500 }}>
+                                                        {i === 0 ? 'Thumbnail' : `Card ${i + 1}`}
+                                                    </span>
+                                                </>
+                                            )}
+                                            <input
+                                                id={`edit-upload-slot-${i}`}
+                                                type="file"
+                                                accept="image/*"
+                                                style={{ display: 'none' }}
+                                                onChange={(e) => handleImageChange(e, i)}
                                             />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeImage(i)}
-                                                style={{
-                                                    position: 'absolute', top: -6, right: -6,
-                                                    background: '#ef4444', color: '#fff',
-                                                    border: 'none', borderRadius: '50%',
-                                                    width: 18, height: 18, cursor: 'pointer',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    padding: 0, lineHeight: 1,
-                                                }}
-                                            >
-                                                <X size={10} />
-                                            </button>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         <div style={{ marginTop: 20 }}>

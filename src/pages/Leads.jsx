@@ -12,11 +12,11 @@ import './Leads.css';
 
 /* ── Status configuration ────────────────────────────────────────────────── */
 const STATUS_CONFIG = {
-    New:          { label: 'New',         color: '#3B82F6', bg: '#EFF6FF' },
-    'In Progress':{ label: 'In Progress', color: '#F59E0B', bg: '#FFFBEB' },
-    Hold:         { label: 'Hold',        color: '#8B5CF6', bg: '#F5F3FF' },
-    Closed:       { label: 'Closed',      color: '#22C55E', bg: '#F0FDF4' },
-    Cancel:       { label: 'Cancel',      color: '#EF4444', bg: '#FEF2F2' },
+    New: { label: 'New', color: '#3B82F6', bg: '#EFF6FF' },
+    Hold: { label: 'Hold', color: '#8B5CF6', bg: '#F5F3FF' },
+    'In Progress': { label: 'In Progress', color: '#F59E0B', bg: '#FFFBEB' },
+    Closed: { label: 'Closed', color: '#22C55E', bg: '#F0FDF4' },
+    Cancel: { label: 'Cancel', color: '#EF4444', bg: '#FEF2F2' },
 };
 
 const STATUS_KEYS = Object.keys(STATUS_CONFIG);
@@ -219,17 +219,17 @@ function LeadModal({ lead, onClose, onStatusChange, auditLog, auditLoading, prop
                                 {auditLog.map((entry, i) => {
                                     let oldSt = entry.oldStatus || entry.OldStatus || entry.oldLeadStatus || '—';
                                     let newSt = entry.newStatus || entry.NewStatus || entry.newLeadStatus || entry.leadStatus || '—';
-                                    
+
                                     if (entry.description) {
                                         const m = entry.description.match(/from '([^']+)' to '([^']+)'/i);
                                         if (m) { oldSt = m[1]; newSt = m[2]; }
                                     }
 
-                                    const who   = entry.name || entry.Name || entry.changedByUsername || entry.ChangedByUsername
-                                                || entry.changedBy || entry.ChangedBy
-                                                || entry.userName || entry.UserName || 'System';
-                                    const when  = entry.modifiedOn || entry.ModifiedOn || entry.changedAt || entry.ChangedAt
-                                                || entry.createdDate || entry.CreatedDate || '';
+                                    const who = entry.name || entry.Name || entry.changedByUsername || entry.ChangedByUsername
+                                        || entry.changedBy || entry.ChangedBy
+                                        || entry.userName || entry.UserName || 'System';
+                                    const when = entry.modifiedOn || entry.ModifiedOn || entry.changedAt || entry.ChangedAt
+                                        || entry.createdDate || entry.CreatedDate || '';
                                     const newCfg = getStatusConfig(newSt);
 
                                     return (
@@ -281,12 +281,12 @@ export default function Leads() {
     const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
 
-    const [search, setSearch]             = useState('');
+    const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [filterInterest, setFilterInterest] = useState('');
-    const [currentPage, setCurrentPage]   = useState(1);
+    const [currentPage, setCurrentPage] = useState(1);
     const [selectedLead, setSelectedLead] = useState(null);
-    const [auditLog, setAuditLog]         = useState([]);
+    const [auditLog, setAuditLog] = useState([]);
     const [auditLoading, setAuditLoading] = useState(false);
     const [statusUpdating, setStatusUpdating] = useState(false);
 
@@ -327,12 +327,12 @@ export default function Leads() {
     }, [filtered, currentPage]);
 
     const startRow = (currentPage - 1) * ROWS_PER_PAGE + 1;
-    const endRow   = Math.min(currentPage * ROWS_PER_PAGE, filtered.length);
+    const endRow = Math.min(currentPage * ROWS_PER_PAGE, filtered.length);
 
     /* ── Interests for filter dropdown ────────────────────────────────── */
     const interests = useMemo(() =>
         [...new Set(leads.map(l => l.customerInterest).filter(Boolean))],
-    [leads]);
+        [leads]);
 
     /* ── Open drawer & fetch audit ────────────────────────────────────── */
     const openDrawer = useCallback(async (lead) => {
@@ -383,7 +383,7 @@ export default function Leads() {
         const pages = [];
         const maxVisible = 5;
         let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-        let end   = Math.min(totalPages, start + maxVisible - 1);
+        let end = Math.min(totalPages, start + maxVisible - 1);
         if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1);
         for (let i = start; i <= end; i++) pages.push(i);
         return pages;
@@ -405,14 +405,14 @@ export default function Leads() {
                 </div>
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ position: 'relative', width: 180 }}>
-                        <Filter 
-                            size={15} 
-                            style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} 
+                        <Filter
+                            size={15}
+                            style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}
                         />
-                        <select 
-                            className="form-control" 
-                            style={{ width: '100%', paddingLeft: 40, paddingRight: 16 }} 
-                            value={filterStatus} 
+                        <select
+                            className="form-control"
+                            style={{ width: '100%', paddingLeft: 40, paddingRight: 16 }}
+                            value={filterStatus}
                             onChange={e => setFilterStatus(e.target.value)}
                         >
                             <option value="">All Status</option>
@@ -423,14 +423,14 @@ export default function Leads() {
                     </div>
 
                     <div style={{ position: 'relative', width: 200 }}>
-                        <Filter 
-                            size={15} 
-                            style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} 
+                        <Filter
+                            size={15}
+                            style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}
                         />
-                        <select 
-                            className="form-control" 
-                            style={{ width: '100%', paddingLeft: 40, paddingRight: 16 }} 
-                            value={filterInterest} 
+                        <select
+                            className="form-control"
+                            style={{ width: '100%', paddingLeft: 40, paddingRight: 16 }}
+                            value={filterInterest}
                             onChange={e => setFilterInterest(e.target.value)}
                         >
                             <option value="">All Interests</option>
@@ -439,8 +439,8 @@ export default function Leads() {
                     </div>
 
                     {(search || filterStatus || filterInterest) && (
-                        <button 
-                            className="btn btn-ghost" 
+                        <button
+                            className="btn btn-ghost"
                             onClick={() => { setSearch(''); setFilterStatus(''); setFilterInterest(''); }}
                             style={{ gap: 4 }}
                         >

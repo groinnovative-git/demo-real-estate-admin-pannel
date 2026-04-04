@@ -169,6 +169,7 @@ export function buildPropertyPayload(form, type, existingId = null) {
         propertyType:       propertyTypeName,
         propertySubType:    subType,
         isLoanProviding:    Boolean(form.loanSupport),
+        loanPercentage:     form.loanSupport ? (Number(form.loanPercentage) || 0) : 0,
         isActive:           true,
         propertySqFt:       builtSqFt,
         
@@ -239,6 +240,7 @@ export function normalizeProperty(data) {
         type,
         subType:        data.propertySubType     || '',
         loanSupport:    data.isLoanProviding      || false,
+        loanPercentage: Number(data.loanPercentage) || 0,
         area:           valid.includes('plotAreaSqYd') && !valid.includes('bedrooms') ? 0 : Number(data.propertySqFt) || 0, // area is essentially BuiltUpArea/CarpetArea
         plotArea:       valid.includes('plotAreaSqYd') ? Number(data.plotAreaSqYd) || 0 : 0,
         bhk:            valid.includes('bedrooms') ? Number(data.bedrooms) || 0 : 0,
@@ -268,6 +270,12 @@ export function normalizeProperty(data) {
         description:    data.description          || '',
         location:       data.location             || '',
         mapEmbedSrc:    data.locationIframe        || '',
+        // ── Nearby Locations ──
+        nearbyHospitalDist: data.nearbyHospital ? String(data.nearbyHospital).split(' ')[0] : '', nearbyHospitalUnit: data.nearbyHospital && String(data.nearbyHospital).includes('m') && !String(data.nearbyHospital).includes('km') ? 'm' : 'km',
+        nearbyCollegeDist: data.nearbyCollege ? String(data.nearbyCollege).split(' ')[0] : '', nearbyCollegeUnit: data.nearbyCollege && String(data.nearbyCollege).includes('m') && !String(data.nearbyCollege).includes('km') ? 'm' : 'km',
+        nearbySchoolDist: data.nearbySchool ? String(data.nearbySchool).split(' ')[0] : '', nearbySchoolUnit: data.nearbySchool && String(data.nearbySchool).includes('m') && !String(data.nearbySchool).includes('km') ? 'm' : 'km',
+        nearbyStationDist: data.nearbyStation ? String(data.nearbyStation).split(' ')[0] : '', nearbyStationUnit: data.nearbyStation && String(data.nearbyStation).includes('m') && !String(data.nearbyStation).includes('km') ? 'm' : 'km',
+        nearbyBusStandDist: data.nearbyBusStand ? String(data.nearbyBusStand).split(' ')[0] : '', nearbyBusStandUnit: data.nearbyBusStand && String(data.nearbyBusStand).includes('m') && !String(data.nearbyBusStand).includes('km') ? 'm' : 'km',
         status:         (data.propertyStatus || data.status || 'active').trim().toLowerCase(),
         isActive:       data.isActive ?? true,
         listedDate:     data.listedDate           || new Date().toISOString().split('T')[0],
@@ -330,6 +338,7 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
     fd.append('PropertyType',       propertyTypeName);
     fd.append('PropertySubType',    subType);
     fd.append('IsLoanProviding',    String(Boolean(form.loanSupport)));
+    fd.append('LoanPercentage',     String(form.loanSupport ? (Number(form.loanPercentage) || 0) : 0));
     fd.append('IsActive',           'true');
     fd.append('PropertyStatus',     form.status === 'sold' ? 'Sold' : 'Active');
     fd.append('PropertySqFt',       String(builtSqFt));
@@ -357,6 +366,20 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
     fd.append('Location',        form.location || '');
     fd.append('LocationIframe',  extractVideoUrl(form.mapEmbedSrc));
 
+    // ── Nearby Locations ──
+    const appendLoc = (key, dist, unit) => {
+        if (dist && String(dist).trim() !== '') {
+            fd.append(key, `${dist} ${unit}`);
+        } else {
+            fd.append(key, '');
+        }
+    };
+    appendLoc('NearbyHospital', form.nearbyHospitalDist, form.nearbyHospitalUnit);
+    appendLoc('NearbyCollege', form.nearbyCollegeDist, form.nearbyCollegeUnit);
+    appendLoc('NearbySchool', form.nearbySchoolDist, form.nearbySchoolUnit);
+    appendLoc('NearbyStation', form.nearbyStationDist, form.nearbyStationUnit);
+    appendLoc('NearbyBusStand', form.nearbyBusStandDist, form.nearbyBusStandUnit);
+
     // Amenity boolean flags — convert camelCase to PascalCase for C# model binding
     Object.entries(amenityFlags).forEach(([field, val]) => {
         const pascalKey = field.charAt(0).toUpperCase() + field.slice(1);
@@ -372,7 +395,7 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
     }
 
     // 2) New File objects (compressed uploads)
-    imageFiles.forEach(file => fd.append('Images', file));
+    imageFiles.filter(Boolean).forEach(file => fd.append('Images', file));
 
     // ── Debug: log all FormData entries ───────────────────────────────────
     console.group('📦 buildPropertyFormData payload');
