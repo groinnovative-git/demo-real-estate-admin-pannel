@@ -1,6 +1,6 @@
 // ── Amenities master list per property type ─────────────────────────────────
 // Keys match the frontend route params used in TYPE_CONFIG / Sidebar:
-//   apartment | villa | plot | house | commercial | farmland
+//   apartment | villa | plot | house | commercial | farmland | pg
 
 const amenitiesByPropertyType = {
     apartment: [
@@ -134,6 +134,25 @@ const amenitiesByPropertyType = {
         'Maintenance Staff',
         'Generator Backup',
         'Waste Management',
+    ],
+
+    pg: [
+        'Food Included',
+        'WiFi',
+        'Washing Machine',
+        'Power Backup',
+        'Housekeeping',
+        'Bed',
+        'Cupboard',
+        'Table',
+        'Chair',
+        'AC',
+        'TV',
+        'Geyser',
+        'CCTV',
+        'Security Guard',
+        'Shared Kitchen',
+        'Cooking Allowed',
     ],
 };
 

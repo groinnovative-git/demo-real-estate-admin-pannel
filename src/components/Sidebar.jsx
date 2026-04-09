@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, Users,
-    Building, Home, TreePine, Store, Landmark, Building2, KeyRound, Leaf
+    Building, Home, TreePine, Store, Landmark, Building2, KeyRound, Leaf, Bed
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './Sidebar.css';
@@ -16,6 +16,7 @@ const PROPERTY_TYPES = [
     { id: 'house', label: 'Individual House', icon: Home },
     { id: 'commercial', label: 'Commercial Space', icon: Store },
     { id: 'farmland', label: 'Farm Land', icon: Leaf },
+    { id: 'pg', label: 'PG', icon: Bed },
 ];
 
 export default function Sidebar({ collapsed, onToggle }) {

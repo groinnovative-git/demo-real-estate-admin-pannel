@@ -37,7 +37,7 @@ function ResetCredentialModal({ credential, onClose, onSaved }) {
     if (!credential) return null;
     
     // Check if any field differs; since user requested "password and confirm password new ah kekanum", make password effectively mandatory for Reset.
-    const isDirty = name !== credential.name || emailid !== credential.emailid || username !== credential.username || newPassword !== '';
+    const isDirty = name !== credential.name || emailid !== credential.emailid || newPassword !== '';
 
     const validate = () => {
         const errs = {};
@@ -65,8 +65,26 @@ function ResetCredentialModal({ credential, onClose, onSaved }) {
         }
         setSaving(true);
         try {
-            await updateCredential(credential.id, { name, username, emailid, password: newPassword, role: credential.role });
-            onSaved(credential.id, { name, username, emailid, password: newPassword });
+            const trimmedName = name.trim();
+            const trimmedEmailId = emailid.trim();
+            const trimmedUsername = username.trim();
+            const trimmedPassword = newPassword.trim();
+
+            await updateCredential(credential.id, {
+                userId: credential.id,
+                name: trimmedName,
+                username: trimmedUsername,
+                emailid: trimmedEmailId,
+                password: trimmedPassword,
+                role: credential.role
+            });
+            onSaved(credential.id, {
+                userId: credential.id,
+                name: trimmedName,
+                username: trimmedUsername,
+                emailid: trimmedEmailId,
+                password: trimmedPassword
+            });
         } catch (error) {
             let errorMsg = 'Failed to reset user. Try again.';
             if (error?.response?.data) {
@@ -95,6 +113,18 @@ function ResetCredentialModal({ credential, onClose, onSaved }) {
                         <div className="cred-error-msg"><AlertCircle size={14}/> {errors.submit}</div>
                     )}
                     <div className="form-group">
+                        <label className="cred-field-label">Username</label>
+                        <input 
+                            type="text" 
+                            className={`cred-input ${errors.username ? 'cred-input--error' : ''}`}
+                            value={username}
+                            onChange={(e) => { setUsername(e.target.value); setErrors(p => ({...p, username: undefined})); }}
+                            placeholder="johndoe123"
+                            disabled
+                        />
+                        {errors.username && <span className="cred-error-msg">{errors.username}</span>}
+                    </div>
+                    <div className="form-group">
                         <label className="cred-field-label">Name</label>
                         <input 
                             type="text" 
@@ -115,17 +145,6 @@ function ResetCredentialModal({ credential, onClose, onSaved }) {
                             placeholder="user@example.com"
                         />
                         {errors.emailid && <span className="cred-error-msg">{errors.emailid}</span>}
-                    </div>
-                    <div className="form-group">
-                        <label className="cred-field-label">Username</label>
-                        <input 
-                            type="text" 
-                            className={`cred-input ${errors.username ? 'cred-input--error' : ''}`}
-                            value={username} 
-                            onChange={(e) => { setUsername(e.target.value); setErrors(p => ({...p, username: undefined})); }}
-                            placeholder="johndoe123"
-                        />
-                        {errors.username && <span className="cred-error-msg">{errors.username}</span>}
                     </div>
                     <div className="form-group">
                         <label className="cred-field-label">New Password</label>

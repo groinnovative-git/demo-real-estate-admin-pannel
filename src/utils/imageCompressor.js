@@ -81,7 +81,7 @@ export async function compressImage(file, opts = {}) {
  * @returns {Promise<File[]>}       - array of compressed Files
  */
 export async function compressImages(files, opts = {}) {
-    return Promise.all(files.map(f => compressImage(f, opts)));
+    return Promise.all((files || []).map(f => (f ? compressImage(f, opts) : Promise.resolve(null))));
 }
 
 // ── Internal helpers ────────────────────────────────────────────────────────

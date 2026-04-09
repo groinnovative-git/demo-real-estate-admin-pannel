@@ -163,7 +163,8 @@ export default function Dashboard() {
                 color: nameLower === 'apartment' ? '#86c127' :
                        nameLower === 'villa'     ? '#f5b642' :
                        nameLower === 'plot'      ? '#3B82F6' :
-                       nameLower === 'house'     ? '#F59E0B' : '#EF4444',
+                       nameLower === 'house'     ? '#F59E0B' :
+                       nameLower === 'pg'        ? '#0f766e' : '#EF4444',
             };
         });
     }, [apiCounts]);

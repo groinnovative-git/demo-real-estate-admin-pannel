@@ -53,13 +53,11 @@ export const createCredential = async (payload) => {
 // ── UPDATE a single credential ────────────────────────────────────────────────
 export const updateCredential = async (id, payload) => {
     // Endpoint: PUT /api/Auth/UpdateUserCrediential
-    // Payload: { userId, name, username, emailid, password }
+    // Payload: { userId, name, email, password }
     const requestPayload = {
-        userId: id,
+        userId: payload.userId || id,
         name: payload.name,
-        username: payload.username,
-        email: payload.emailid, // Send as 'email' per swagger
-        ...(payload.role ? { role: payload.role } : {}),
+        email: payload.emailid,
         ...(payload.password && payload.password.trim() ? { password: payload.password } : {})
     };
     const res = await axiosInstance.put(`/api/Auth/UpdateUserCrediential`, requestPayload);

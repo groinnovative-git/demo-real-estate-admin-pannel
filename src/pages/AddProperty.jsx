@@ -2,7 +2,7 @@ import { useState, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     Upload, X, CheckCircle, Building,
-    Info, Home, Map, Store, Castle, Leaf, MapPin
+    Info, Home, Map, Store, Castle, Leaf, MapPin, Bed
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { buildPropertyFormData, getErrorMessage } from '../utils/propertyPayloadMapper';
@@ -22,6 +22,12 @@ const FACING_OPTIONS = [
     'East', 'West', 'North', 'South',
     'North-East', 'North-West', 'South-East', 'South-West',
 ];
+
+const IMAGE_SLOT_COUNT = 5;
+
+function getImageSlotLabel(index) {
+    return index === 0 ? 'Thumbnail' : `Card ${index + 1}`;
+}
 
 // ─── Per-type configuration ───────────────────────────────────────────────────
 
@@ -116,6 +122,23 @@ const TYPE_CONFIG = {
             facing: true, approval: true, roadAccess: true, floorDetails: true,
         },
     },
+    pg: {
+        label: 'PG', icon: Bed,
+        subtitle: 'Create a premium PG listing with rent, sharing, and stay amenities.',
+        specTitle: 'PG Details',
+        successMsg: 'PG Listed Successfully!',
+        successSub: 'The PG listing has been added to your portfolio.',
+        publishLabel: 'Publish PG Listing',
+        theme: {
+            heroBg: 'linear-gradient(135deg, #f8fafc 0%, #ecfeff 45%, #fef3c7 100%)',
+            border: '#bae6fd', iconBg: 'linear-gradient(150deg, #164e63 0%, #0f766e 42%, #14b8a6 100%)',
+            iconGlow: 'rgba(15, 118, 110, 0.42)', accentColor: '#0f766e',
+            accentBg: 'rgba(15, 118, 110, 0.08)', accentBorder: 'rgba(15, 118, 110, 0.2)', watermark: '#0f766e',
+        },
+        fields: {
+            amenities: true,
+        },
+    },
     farmland: {
         label: 'Farm Land', icon: Leaf,
         subtitle: 'Create an agricultural farm land listing for the portfolio.',
@@ -173,17 +196,131 @@ const REQUIRED_FIELDS = {
         { key: 'totalLandArea', label: 'Total Land Area' },
         { key: 'price', label: 'Total Price' },
     ],
+    pg: [
+        { key: 'title', label: 'Property Title' },
+        { key: 'location', label: 'Location' },
+        { key: 'monthlyRent', label: 'Monthly Rent' },
+        { key: 'depositAmount', label: 'Deposit Amount' },
+        { key: 'availableFrom', label: 'Available From' },
+        { key: 'sharingType', label: 'Sharing Type' },
+        { key: 'genderAllowed', label: 'PG Type' },
+        { key: 'attachedBathroom', label: 'Attached Bathroom' },
+        { key: 'furnished', label: 'Furnished' },
+        { key: 'description', label: 'Description' },
+    ],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function FieldGroup({ label, children }) {
+function FieldGroup({ label, children, error }) {
     return (
         <div className="form-group">
             <label className="premium-label">{label}</label>
             {children}
+            {error && <div className="premium-field-error">{error}</div>}
         </div>
     );
+}
+
+function NearbyLocationsSection({ form, handleChange }) {
+    return (
+        <div className="card premium-form-section">
+            <div className="premium-section-header">
+                <MapPin size={18} color="#0d6933" />
+                <h3 className="premium-section-title">Nearby Locations</h3>
+            </div>
+            <div className="grid grid-2">
+                {[
+                    { label: 'Hospital', keyDist: 'nearbyHospitalDist', keyUnit: 'nearbyHospitalUnit' },
+                    { label: 'College', keyDist: 'nearbyCollegeDist', keyUnit: 'nearbyCollegeUnit' },
+                    { label: 'School', keyDist: 'nearbySchoolDist', keyUnit: 'nearbySchoolUnit' },
+                    { label: 'Station', keyDist: 'nearbyStationDist', keyUnit: 'nearbyStationUnit' },
+                    { label: 'Bus Stand', keyDist: 'nearbyBusStandDist', keyUnit: 'nearbyBusStandUnit' }
+                ].map(loc => (
+                    <FieldGroup key={loc.label} label={loc.label}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                            <input
+                                className="premium-input"
+                                type="number"
+                                name={loc.keyDist}
+                                value={form[loc.keyDist]}
+                                onChange={handleChange}
+                                placeholder="Distance"
+                                min={0}
+                                step="any"
+                                style={{ flex: 1 }}
+                            />
+                            <select
+                                className="premium-input"
+                                name={loc.keyUnit}
+                                value={form[loc.keyUnit]}
+                                onChange={handleChange}
+                                style={{ width: '80px', flexShrink: 0 }}
+                            >
+                                <option value="m">m</option>
+                                <option value="km">km</option>
+                            </select>
+                        </div>
+                    </FieldGroup>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function createInitialForm() {
+    return {
+        title: '', price: '', location: '',
+        carpetArea: '', plotArea: '', builtUpArea: '',
+        bhk: '', bathrooms: '',
+        floor: '', totalFloors: '',
+        furnishing: '', facing: '',
+        ageYears: '', maintenance: '', washrooms: '',
+        commercialType: '',
+        plotDimensions: '', approvalDetails: '',
+        amenities: [], images: [], description: '',
+        shortVideoUrl: '', fullVideoUrl: '',
+        mapEmbedSrc: '',
+        loanSupport: false,
+        loanPercentage: '',
+        status: 'rent',
+        apartmentSubType: '',
+        plotSubType: '',
+        govApprovedCertificate: '',
+        totalLandArea: '',
+        pricePerAcre: '',
+        landType: '',
+        floorDetails: '',
+        borewell: false,
+        ebConnection: false,
+        roadAccess: false,
+        nearbyHospitalDist: '', nearbyHospitalUnit: 'km',
+        nearbyCollegeDist: '', nearbyCollegeUnit: 'km',
+        nearbySchoolDist: '', nearbySchoolUnit: 'km',
+        nearbyStationDist: '', nearbyStationUnit: 'km',
+        nearbyBusStandDist: '', nearbyBusStandUnit: 'km',
+        monthlyRent: '',
+        depositAmount: '',
+        availableFrom: '',
+        sharingType: '',
+        genderAllowed: '',
+        foodIncluded: '',
+        ac: '',
+        attachedBathroom: '',
+        furnished: '',
+    };
+}
+
+function isBlank(value) {
+    return value === null || value === undefined || String(value).trim() === '';
+}
+
+function isPositiveNumber(value) {
+    return !isBlank(value) && Number(value) > 0;
+}
+
+function isValidDate(value) {
+    return !isBlank(value) && !Number.isNaN(Date.parse(value));
 }
 
 const PARTICLES = [
@@ -230,6 +367,7 @@ export default function AddProperty() {
 
     const config = TYPE_CONFIG[type] || TYPE_CONFIG.apartment;
     const { fields } = config;
+    const isPg = type === 'pg';
 
     // Dynamic amenity list based on current property type
     const currentAmenities = useMemo(() => getAmenitiesForType(type), [type]);
@@ -249,6 +387,7 @@ export default function AddProperty() {
         mapEmbedSrc: '',
         loanSupport: false,
         loanPercentage: '',
+        status: 'rent',
         // ── New PDF fields ──
         apartmentSubType: '',
         plotSubType: '',
@@ -266,8 +405,18 @@ export default function AddProperty() {
         nearbySchoolDist: '', nearbySchoolUnit: 'km',
         nearbyStationDist: '', nearbyStationUnit: 'km',
         nearbyBusStandDist: '', nearbyBusStandUnit: 'km',
+        monthlyRent: '',
+        depositAmount: '',
+        availableFrom: '',
+        sharingType: '',
+        genderAllowed: '',
+        foodIncluded: '',
+        ac: '',
+        attachedBathroom: '',
+        furnished: '',
     });
     const [imageFiles, setImageFiles] = useState([]);
+    const [errors, setErrors] = useState({});
 
     const [submitted, setSubmitted] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -275,19 +424,72 @@ export default function AddProperty() {
 
     const showToast = (message, type = 'error') => setToast({ visible: true, message, type });
     const closeToast = () => setToast({ visible: false, message: '', type: 'error' });
+    const getFieldClass = (name) => `premium-input${errors[name] ? ' premium-input--error' : ''}`;
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setForm(f => ({ ...f, [name]: value }));
+        setErrors(prev => {
+            if (!prev[name]) return prev;
+            const next = { ...prev };
+            delete next[name];
+            return next;
+        });
+    };
+
+    const handlePgBooleanChange = (name, amenityLabel = '') => (e) => {
+        const value = e.target.value;
+        setForm(f => {
+            const currentAmenitiesList = Array.isArray(f.amenities) ? [...f.amenities] : [];
+            let nextAmenities = currentAmenitiesList;
+
+            if (amenityLabel) {
+                const hasAmenity = currentAmenitiesList.includes(amenityLabel);
+                if (value === 'true' && !hasAmenity) nextAmenities = [...currentAmenitiesList, amenityLabel];
+                if (value === 'false' && hasAmenity) nextAmenities = currentAmenitiesList.filter(item => item !== amenityLabel);
+            }
+
+            return { ...f, [name]: value, amenities: nextAmenities };
+        });
+        setErrors(prev => {
+            if (!prev[name]) return prev;
+            const next = { ...prev };
+            delete next[name];
+            return next;
+        });
     };
 
     const toggleAmenity = (a) => {
-        setForm(f => ({
-            ...f,
-            amenities: f.amenities.includes(a)
-                ? f.amenities.filter(x => x !== a)
-                : [...f.amenities, a],
-        }));
+        setForm(f => {
+            const current = Array.isArray(f.amenities) ? f.amenities : [];
+            const nextAmenities = current.includes(a)
+                ? current.filter(x => x !== a)
+                : [...current, a];
+            const nextForm = { ...f, amenities: nextAmenities };
+
+            if (isPg && a === 'Food Included') nextForm.foodIncluded = nextAmenities.includes(a) ? 'true' : 'false';
+            if (isPg && a === 'AC') nextForm.ac = nextAmenities.includes(a) ? 'true' : 'false';
+
+            return nextForm;
+        });
+    };
+
+    const validateForm = () => {
+        const nextErrors = {};
+        const requiredFields = REQUIRED_FIELDS[type] || REQUIRED_FIELDS.apartment;
+
+        requiredFields.forEach(({ key, label }) => {
+            if (isBlank(form[key])) nextErrors[key] = `${label} is required.`;
+        });
+
+        if (isPg) {
+            if (!isPositiveNumber(form.monthlyRent)) nextErrors.monthlyRent = 'Monthly rent must be a valid number.';
+            if (!isPositiveNumber(form.depositAmount)) nextErrors.depositAmount = 'Deposit amount must be a valid number.';
+            if (!isValidDate(form.availableFrom)) nextErrors.availableFrom = 'Available from must be a valid date.';
+        }
+
+        setErrors(nextErrors);
+        return nextErrors;
     };
 
     const handleImageChange = (e, index) => {
@@ -298,14 +500,14 @@ export default function AddProperty() {
         
         setForm(f => {
             const newImages = [...(f.images || [])];
-            while (newImages.length < 10) newImages.push('');
+            while (newImages.length < IMAGE_SLOT_COUNT) newImages.push('');
             newImages[index] = url;
             return { ...f, images: newImages };
         });
 
         setImageFiles(prev => {
             const newFiles = [...(prev || [])];
-            while (newFiles.length < 10) newFiles.push(null);
+            while (newFiles.length < IMAGE_SLOT_COUNT) newFiles.push(null);
             newFiles[index] = file;
             return newFiles;
         });
@@ -314,13 +516,13 @@ export default function AddProperty() {
     const removeImage = (index) => {
         setForm(f => {
             const newImages = [...(f.images || [])];
-            while (newImages.length < 10) newImages.push('');
+            while (newImages.length < IMAGE_SLOT_COUNT) newImages.push('');
             newImages[index] = '';
             return { ...f, images: newImages };
         });
         setImageFiles(prev => {
             const newFiles = [...(prev || [])];
-            while (newFiles.length < 10) newFiles.push(null);
+            while (newFiles.length < IMAGE_SLOT_COUNT) newFiles.push(null);
             newFiles[index] = null;
             return newFiles;
         });
@@ -329,13 +531,11 @@ export default function AddProperty() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Client-side validation
-        const requiredFields = REQUIRED_FIELDS[type] || REQUIRED_FIELDS.apartment;
-        for (const { key, label } of requiredFields) {
-            if (!form[key] || String(form[key]).trim() === '') {
-                showToast(`${label} is required`, 'warning');
-                return;
-            }
+        const validationErrors = validateForm();
+        if (Object.keys(validationErrors).length > 0) {
+            const firstError = Object.values(validationErrors)[0];
+            if (firstError) showToast(firstError, 'warning');
+            return;
         }
 
         setLoading(true);
@@ -346,6 +546,7 @@ export default function AddProperty() {
                 : [];
             const payload = buildPropertyFormData(form, type, compressedFiles);
             await addProperty(payload);
+            setErrors({});
             setSubmitted(true);
         } catch (err) {
             showToast(getErrorMessage(err), 'error');
@@ -371,10 +572,8 @@ export default function AddProperty() {
                             onClick={() => {
                                 setSubmitted(false);
                                 setImageFiles([]);
-                                setForm(f => ({
-                                    ...f, title: '', price: '', location: '',
-                                    images: [], description: '',
-                                }));
+                                setErrors({});
+                                setForm(createInitialForm());
                             }}
                         >
                             Add Another {config.label}
@@ -448,6 +647,113 @@ export default function AddProperty() {
             </div>
 
             <form onSubmit={handleSubmit} className="premium-form-container" noValidate>
+                {isPg && (
+                    <>
+                        <div className="card premium-form-section">
+                            <div className="premium-section-header">
+                                <Info size={18} color="#0d6933" />
+                                <h3 className="premium-section-title">Basic Details</h3>
+                            </div>
+                            <div className="grid grid-2">
+                                <FieldGroup label="Property Type">
+                                    <div className="property-type-display">
+                                        <TypeIcon size={15} />
+                                        <span>{config.label}</span>
+                                    </div>
+                                </FieldGroup>
+                                <FieldGroup label="Available From *" error={errors.availableFrom}>
+                                    <input className={getFieldClass('availableFrom')} type="date" name="availableFrom" value={form.availableFrom} onChange={handleChange} />
+                                </FieldGroup>
+                                <FieldGroup label="Property Title *" error={errors.title}>
+                                    <input className={getFieldClass('title')} name="title" value={form.title} onChange={handleChange} placeholder="e.g. Premium PG in RS Puram" />
+                                </FieldGroup>
+                                <FieldGroup label="Location *" error={errors.location}>
+                                    <input className={getFieldClass('location')} name="location" value={form.location} onChange={handleChange} placeholder="e.g. Coimbatore" />
+                                </FieldGroup>
+                            </div>
+                        </div>
+
+                        <div className="card premium-form-section">
+                            <div className="premium-section-header">
+                                <CheckCircle size={18} color="#0d6933" />
+                                <h3 className="premium-section-title">Pricing</h3>
+                            </div>
+                            <div className="grid grid-2">
+                                <FieldGroup label="Monthly Rent (₹) *" error={errors.monthlyRent}>
+                                    <input className={getFieldClass('monthlyRent')} type="number" name="monthlyRent" value={form.monthlyRent} onChange={handleChange} placeholder="e.g. 6000" min={1} />
+                                </FieldGroup>
+                                <FieldGroup label="Deposit Amount (₹) *" error={errors.depositAmount}>
+                                    <input className={getFieldClass('depositAmount')} type="number" name="depositAmount" value={form.depositAmount} onChange={handleChange} placeholder="e.g. 10000" min={0} />
+                                </FieldGroup>
+                            </div>
+                        </div>
+
+                        <div className="card premium-form-section">
+                            <div className="premium-section-header">
+                                <TypeIcon size={18} color="#0d6933" />
+                                <h3 className="premium-section-title">PG Details</h3>
+                            </div>
+                            <div className="grid grid-3">
+                                <FieldGroup label="Sharing Type *" error={errors.sharingType}>
+                                    <select className={getFieldClass('sharingType')} name="sharingType" value={form.sharingType} onChange={handleChange}>
+                                        <option value="">Select sharing</option>
+                                        <option value="1 Sharing">1 Sharing</option>
+                                        <option value="2 Sharing">2 Sharing</option>
+                                        <option value="3 Sharing">3 Sharing</option>
+                                        <option value="4 Sharing">4 Sharing</option>
+                                        <option value="5 Sharing">5 Sharing</option>
+                                        <option value="6 Sharing">6 Sharing</option>
+                                    </select>
+                                </FieldGroup>
+                                <FieldGroup label="PG Type *" error={errors.genderAllowed}>
+                                    <select className={getFieldClass('genderAllowed')} name="genderAllowed" value={form.genderAllowed} onChange={handleChange}>
+                                        <option value="">Select PG type</option>
+                                        <option value="Men">Men</option>
+                                        <option value="Women">Women</option>
+                                        <option value="Colive">Colive</option>
+                                    </select>
+                                </FieldGroup>
+                                <FieldGroup label="Attached Bathroom *" error={errors.attachedBathroom}>
+                                    <select className={getFieldClass('attachedBathroom')} name="attachedBathroom" value={form.attachedBathroom} onChange={handlePgBooleanChange('attachedBathroom')}>
+                                        <option value="">Select option</option>
+                                        <option value="true">Yes</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                </FieldGroup>
+                                <FieldGroup label="Furnished *" error={errors.furnished}>
+                                    <select className={getFieldClass('furnished')} name="furnished" value={form.furnished} onChange={handlePgBooleanChange('furnished')}>
+                                        <option value="">Select option</option>
+                                        <option value="true">Yes</option>
+                                        <option value="false">No</option>
+                                    </select>
+                                </FieldGroup>
+                            </div>
+                        </div>
+
+                        {currentAmenities.length > 0 && (
+                            <div className="card premium-form-section">
+                                <div className="premium-section-header">
+                                    <CheckCircle size={18} color="#0d6933" />
+                                    <h3 className="premium-section-title">Amenities</h3>
+                                </div>
+                                <div className="premium-checkbox-grid">
+                                    {currentAmenities.map(a => (
+                                        <label key={a} className={`premium-checkbox-pill ${form.amenities.includes(a) ? 'active' : ''}`}>
+                                            <input type="checkbox" checked={form.amenities.includes(a)} onChange={() => toggleAmenity(a)} style={{ display: 'none' }} />
+                                            <div className="pill-indicator" />
+                                            {a}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <NearbyLocationsSection form={form} handleChange={handleChange} />
+
+                    </>
+                )}
+                {!isPg && (
+                    <>
 
                 {/* ── Section 1: Basic Details ─────────────────────────────── */}
                 <div className="card premium-form-section">
@@ -463,9 +769,9 @@ export default function AddProperty() {
                             </div>
                         </FieldGroup>
 
-                        <FieldGroup label="Loan Support & Percentage">
-                            <div className="loan-toggle-field" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <FieldGroup label="Loan Support & Listing Type">
+                            <div className="form-toggle-row">
+                                <div className="form-toggle-cluster">
                                     <button
                                         type="button"
                                         role="switch"
@@ -499,9 +805,25 @@ export default function AddProperty() {
                                         placeholder="%"
                                         min={1}
                                         max={100}
-                                        style={{ width: '80px', padding: '6px 12px', minHeight: '38px', fontSize: '14px', marginBottom: 0 }}
+                                        style={{ width: '80px', padding: '6px 12px', minHeight: '38px', fontSize: '14px', marginBottom: 0, flexShrink: 0 }}
                                     />
                                 )}
+                                <div className="listing-toggle" aria-label="Listing type">
+                                    <button
+                                        type="button"
+                                        className={`listing-toggle-btn${form.status !== 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--rent' : ''}`}
+                                        onClick={() => setForm(f => ({ ...f, status: 'rent' }))}
+                                    >
+                                        Rent
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`listing-toggle-btn${form.status === 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--sold' : ''}`}
+                                        onClick={() => setForm(f => ({ ...f, status: 'sold' }))}
+                                    >
+                                        Sale
+                                    </button>
+                                </div>
                             </div>
                         </FieldGroup>
 
@@ -722,57 +1044,18 @@ export default function AddProperty() {
                     </div>
                 )}
 
-                {/* ── Section X: Nearby Locations ──────────────────────────── */}
-                <div className="card premium-form-section">
-                    <div className="premium-section-header">
-                        <MapPin size={18} color="#0d6933" />
-                        <h3 className="premium-section-title">Nearby Locations</h3>
-                    </div>
-                    <div className="grid grid-2">
-                        {[
-                            { label: 'Hospital', keyDist: 'nearbyHospitalDist', keyUnit: 'nearbyHospitalUnit' },
-                            { label: 'College', keyDist: 'nearbyCollegeDist', keyUnit: 'nearbyCollegeUnit' },
-                            { label: 'School', keyDist: 'nearbySchoolDist', keyUnit: 'nearbySchoolUnit' },
-                            { label: 'Station', keyDist: 'nearbyStationDist', keyUnit: 'nearbyStationUnit' },
-                            { label: 'Bus Stand', keyDist: 'nearbyBusStandDist', keyUnit: 'nearbyBusStandUnit' }
-                        ].map(loc => (
-                            <FieldGroup key={loc.label} label={loc.label}>
-                                <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input 
-                                        className="premium-input" 
-                                        type="number" 
-                                        name={loc.keyDist} 
-                                        value={form[loc.keyDist]} 
-                                        onChange={handleChange} 
-                                        placeholder="Distance" 
-                                        min={0}
-                                        step="any"
-                                        style={{ flex: 1 }}
-                                    />
-                                    <select 
-                                        className="premium-input" 
-                                        name={loc.keyUnit} 
-                                        value={form[loc.keyUnit]} 
-                                        onChange={handleChange}
-                                        style={{ width: '80px', flexShrink: 0 }}
-                                    >
-                                        <option value="m">m</option>
-                                        <option value="km">km</option>
-                                    </select>
-                                </div>
-                            </FieldGroup>
-                        ))}
-                    </div>
-                </div>
+                <NearbyLocationsSection form={form} handleChange={handleChange} />
 
                 {/* ── Section 4: Images ────────────────────────────────────── */}
+                </>
+                )}
                 <div className="card premium-form-section">
                     <div className="premium-section-header">
                         <Upload size={18} color="#0d6933" />
-                        <h3 className="premium-section-title">Property Images (10 Slots)</h3>
+                        <h3 className="premium-section-title">Property Images (5 Slots)</h3>
                     </div>
-                    <div className="premium-image-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px' }}>
-                        {Array.from({ length: 10 }).map((_, i) => {
+                    <div className="premium-image-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '15px' }}>
+                        {Array.from({ length: IMAGE_SLOT_COUNT }).map((_, i) => {
                             const imgUrl = form.images && form.images[i];
                             return (
                                 <div 
@@ -812,7 +1095,7 @@ export default function AddProperty() {
                                                 textAlign: 'center',
                                                 padding: '4px 0'
                                             }}>
-                                                {i === 0 ? 'Thumbnail' : `Card ${i + 1}`}
+                                                {getImageSlotLabel(i)}
                                             </div>
                                             <button 
                                                 type="button" 
@@ -840,7 +1123,7 @@ export default function AddProperty() {
                                         <>
                                             <Upload size={20} color="#94a3b8" style={{ marginBottom: '8px' }} />
                                             <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>
-                                                {i === 0 ? 'Thumbnail' : `Card ${i + 1}`}
+                                                {getImageSlotLabel(i)}
                                             </span>
                                         </>
                                     )}
@@ -875,13 +1158,14 @@ export default function AddProperty() {
                     </div>
                     <div className="form-group" style={{ marginBottom: 0 }}>
                         <textarea
-                            className="premium-input"
+                            className={getFieldClass('description')}
                             name="description"
                             value={form.description}
                             onChange={handleChange}
                             placeholder={`Describe this ${config.label.toLowerCase()} — highlight key features, nearby landmarks, and unique selling points...`}
                             rows={6}
                         />
+                        {errors.description && <div className="premium-field-error">{errors.description}</div>}
                     </div>
                 </div>
 

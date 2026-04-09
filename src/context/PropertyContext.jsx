@@ -79,9 +79,18 @@ export function PropertyProvider({ children }) {
             const list     = Array.isArray(response.data) ? response.data : [];
             const normalized = list.map(normalizeProperty).filter(p => p.isActive !== false);
             dispatch({ type: 'SET_PROPERTIES', payload: normalized });
+            return normalized;
         } catch {
             dispatch({ type: 'SET_ERROR', payload: 'Failed to load properties.' });
+            return [];
         }
+    };
+
+    const fetchPropertyById = async (id) => {
+        if (!id) return null;
+        const response = await propertyApi.getPropertyById(id);
+        const raw = Array.isArray(response.data) ? response.data[0] : response.data;
+        return normalizeProperty(raw);
     };
 
     const addProperty = async (apiPayload) => {
@@ -91,9 +100,13 @@ export function PropertyProvider({ children }) {
         return normalized;
     };
 
-    const updateProperty = async (apiPayload) => {
+    const updateProperty = async (apiPayload, id) => {
         await propertyApi.updateProperty(apiPayload);
-        await fetchProperties();
+        const [latestProperty] = await Promise.all([
+            fetchPropertyById(id),
+            fetchProperties(),
+        ]);
+        return latestProperty;
     };
 
     const deleteProperty = async (id) => {

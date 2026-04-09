@@ -9,6 +9,12 @@ import PropertyVideoSection from './PropertyVideoSection';
 import PropertyLocationEmbed from './PropertyLocationEmbed';
 import './PropertyModalPremium.css';
 
+const IMAGE_SLOT_COUNT = 5;
+
+function getImageSlotLabel(index) {
+    return index === 0 ? 'Thumbnail' : `Card ${index + 1}`;
+}
+
 
 export default function EditPropertyModal({ property, onClose, onSaved }) {
     useEffect(() => {
@@ -18,6 +24,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
     }, []);
 
     const { updateProperty } = useProperties();
+    const isPg = property.type === 'pg';
 
     // Dynamic amenity list based on property type
     const currentAmenities = useMemo(() => getAmenitiesForType(property.type), [property.type]);
@@ -25,7 +32,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
     // Pre-populate form from the normalised property shape
     const [form, setForm] = useState({
         title:          property.title          || '',
-        price:          property.price          ?? '',
+        price:          isPg ? (property.monthlyRent ?? property.price ?? '') : (property.price ?? ''),
         location:       property.location       || '',
         area:           property.area           || '',
         carpetArea:     property.area           || '',   // reuse area as carpetArea for mapper
@@ -47,7 +54,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         floorDetails:   property.floorDetails   || '',
         landType:               property.landType               || '',
         govApprovedCertificate: property.govApprovedCertificate || '',
-        status:         property.status         || 'active',
+        status:         property.status === 'sold' ? 'sold' : 'rent',
         loanSupport:    property.loanSupport    || false,
         loanPercentage: property.loanPercentage || '',
         amenities:      Array.isArray(property.amenities) ? [...property.amenities] : [],
@@ -62,6 +69,15 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         nearbySchoolDist: property.nearbySchoolDist || '', nearbySchoolUnit: property.nearbySchoolUnit || 'km',
         nearbyStationDist: property.nearbyStationDist || '', nearbyStationUnit: property.nearbyStationUnit || 'km',
         nearbyBusStandDist: property.nearbyBusStandDist || '', nearbyBusStandUnit: property.nearbyBusStandUnit || 'km',
+        monthlyRent:    isPg ? (property.monthlyRent ?? property.price ?? '') : '',
+        depositAmount:  property.depositAmount || '',
+        availableFrom:  property.availableFrom || '',
+        sharingType:    property.sharingType || '',
+        genderAllowed:  property.genderAllowed || '',
+        foodIncluded:   property.foodIncluded === '' ? '' : String(Boolean(property.foodIncluded)),
+        ac:             property.ac === '' ? '' : String(Boolean(property.ac)),
+        attachedBathroom: property.attachedBathroom === '' ? '' : String(Boolean(property.attachedBathroom)),
+        furnished:      property.furnished === '' ? '' : String(Boolean(property.furnished)),
     });
 
     const [imageFiles, setImageFiles] = useState([]);
@@ -77,14 +93,14 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         
         setForm(f => {
             const newImages = [...(f.images || [])];
-            while (newImages.length < 10) newImages.push('');
+            while (newImages.length < IMAGE_SLOT_COUNT) newImages.push('');
             newImages[index] = url;
             return { ...f, images: newImages };
         });
 
         setImageFiles(prev => {
             const newFiles = [...(prev || [])];
-            while (newFiles.length < 10) newFiles.push(null);
+            while (newFiles.length < IMAGE_SLOT_COUNT) newFiles.push(null);
             newFiles[index] = file;
             return newFiles;
         });
@@ -93,13 +109,13 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
     const removeImage = (index) => {
         setForm(f => {
             const newImages = [...(f.images || [])];
-            while (newImages.length < 10) newImages.push('');
+            while (newImages.length < IMAGE_SLOT_COUNT) newImages.push('');
             newImages[index] = '';
             return { ...f, images: newImages };
         });
         setImageFiles(prev => {
             const newFiles = [...(prev || [])];
-            while (newFiles.length < 10) newFiles.push(null);
+            while (newFiles.length < IMAGE_SLOT_COUNT) newFiles.push(null);
             newFiles[index] = null;
             return newFiles;
         });
@@ -110,14 +126,36 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         setForm(f => ({ ...f, [name]: value }));
     };
 
+    const handlePgBooleanChange = (name, amenityLabel = '') => (e) => {
+        const value = e.target.value;
+        setForm(f => {
+            const currentAmenitiesList = Array.isArray(f.amenities) ? [...f.amenities] : [];
+            let nextAmenities = currentAmenitiesList;
+
+            if (amenityLabel) {
+                const hasAmenity = currentAmenitiesList.includes(amenityLabel);
+                if (value === 'true' && !hasAmenity) nextAmenities = [...currentAmenitiesList, amenityLabel];
+                if (value === 'false' && hasAmenity) nextAmenities = currentAmenitiesList.filter(item => item !== amenityLabel);
+            }
+
+            return { ...f, [name]: value, amenities: nextAmenities };
+        });
+    };
+
     const toggleAmenity = (a) => {
         setForm(f => {
             const current = f.amenities || [];
-            return {
+            const nextAmenities = current.includes(a)
+                ? current.filter(x => x !== a)
+                : [...current, a];
+            const nextForm = {
                 ...f,
-                amenities: current.includes(a)
-                    ? current.filter(x => x !== a)
-                    : [...current, a],
+                amenities: nextAmenities,
+            };
+            if (property.type === 'pg' && a === 'Food Included') nextForm.foodIncluded = nextAmenities.includes(a) ? 'true' : 'false';
+            if (property.type === 'pg' && a === 'AC') nextForm.ac = nextAmenities.includes(a) ? 'true' : 'false';
+            return {
+                ...nextForm,
             };
         });
     };
@@ -133,8 +171,8 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         try {
             const compressedFiles = imageFiles.length > 0 ? await compressImages(imageFiles) : [];
             const payload = buildPropertyFormData(form, property.type, compressedFiles, property.id);
-            await updateProperty(payload);
-            onSaved?.();
+            const latestProperty = await updateProperty(payload, property.id);
+            onSaved?.(latestProperty);
         } catch (err) {
             setError(getErrorMessage(err));
         } finally {
@@ -331,16 +369,9 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                                 </div>
                             )}
                             <div className="form-group">
-                                <label className="form-label">Status</label>
-                                <select className="form-control" name="status" value={form.status} onChange={handleChange}>
-                                    <option value="active">Active</option>
-                                    <option value="sold">Sold</option>
-                                </select>
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Loan Support & Percentage</label>
-                                <div className="loan-toggle-field" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <label className="form-label">Loan Support & Listing Type</label>
+                                <div className="form-toggle-row">
+                                    <div className="form-toggle-cluster">
                                         <button
                                             type="button"
                                             role="switch"
@@ -374,9 +405,25 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                                             placeholder="%"
                                             min={1}
                                             max={100}
-                                            style={{ width: '80px', padding: '6px 12px', minHeight: '34px', marginBottom: 0 }}
+                                            style={{ width: '80px', padding: '6px 12px', minHeight: '34px', marginBottom: 0, flexShrink: 0 }}
                                         />
                                     )}
+                                    <div className="listing-toggle" aria-label="Listing type">
+                                        <button
+                                            type="button"
+                                            className={`listing-toggle-btn${form.status !== 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--rent' : ''}`}
+                                            onClick={() => setForm(f => ({ ...f, status: 'rent' }))}
+                                        >
+                                            Rent
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`listing-toggle-btn${form.status === 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--sold' : ''}`}
+                                            onClick={() => setForm(f => ({ ...f, status: 'sold' }))}
+                                        >
+                                            Sale
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -449,9 +496,9 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
 
                         {/* ── Images ── */}
                         <div className="form-group" style={{ marginTop: 14 }}>
-                            <label className="form-label">Property Images (10 Slots)</label>
-                            <div className="premium-image-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px' }}>
-                                {Array.from({ length: 10 }).map((_, i) => {
+                            <label className="form-label">Property Images (5 Slots)</label>
+                            <div className="premium-image-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
+                                {Array.from({ length: IMAGE_SLOT_COUNT }).map((_, i) => {
                                     const imgUrl = form.images && form.images[i];
                                     return (
                                         <div 
@@ -492,7 +539,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                                                         textAlign: 'center',
                                                         padding: '2px 0'
                                                     }}>
-                                                        {i === 0 ? 'Thumbnail' : `Card ${i + 1}`}
+                                                        {getImageSlotLabel(i)}
                                                     </div>
                                                     <button 
                                                         type="button" 
@@ -521,7 +568,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                                                 <>
                                                     <Upload size={14} color="#94a3b8" style={{ marginBottom: '4px' }} />
                                                     <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 500 }}>
-                                                        {i === 0 ? 'Thumbnail' : `Card ${i + 1}`}
+                                                        {getImageSlotLabel(i)}
                                                     </span>
                                                 </>
                                             )}

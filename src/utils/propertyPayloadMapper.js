@@ -85,6 +85,22 @@ const AMENITY_TO_FIELD = {
     'Wheelchair Access':      'hasWheelchairAccess',
     'Maintenance Staff':      'hasMaintenanceStaff',
     'Generator Backup':       'hasGeneratorBackup',
+
+    // PG
+    'Food Included':          'hasFoodIncluded',
+    'WiFi':                   'hasWiFi',
+    'Washing Machine':        'hasWashingMachine',
+    'Housekeeping':           'hasHousekeeping',
+    'Bed':                    'hasBed',
+    'Cupboard':               'hasCupboard',
+    'Table':                  'hasTable',
+    'Chair':                  'hasChair',
+    'AC':                     'hasAC',
+    'TV':                     'hasTV',
+    'Geyser':                 'hasGeyser',
+    'Security Guard':         'hasSecurityGuard',
+    'Shared Kitchen':         'hasSharedKitchen',
+    'Cooking Allowed':        'isCookingAllowed',
 };
 
 // ── Reverse mapping: backend field → ALL matching amenity labels ───────────
@@ -108,12 +124,53 @@ const TYPE_LABEL_MAP = {
     house:     'IndividualHouse',
     commercial:'Commercial',
     farmland:  'FarmLand',
+    pg:        'PG',
 };
 
 // Backend propertyType string → frontend type key (reverse)
 const BACKEND_TYPE_TO_KEY = Object.fromEntries(
     Object.entries(TYPE_LABEL_MAP).map(([key, label]) => [label.toLowerCase(), key])
 );
+
+const IMAGE_SLOT_KEYS = ['img1', 'img2', 'img3', 'img4', 'img5'];
+const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+
+function resolveAssetUrl(value) {
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('blob:') || trimmed.startsWith('data:')) {
+        return trimmed;
+    }
+    if (trimmed.startsWith('/') && API_BASE_URL) {
+        return `${API_BASE_URL}${trimmed}`;
+    }
+    return trimmed;
+}
+
+function toStoredImagePath(value) {
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    if (API_BASE_URL && trimmed.startsWith(API_BASE_URL)) {
+        return trimmed.slice(API_BASE_URL.length) || '';
+    }
+    if (/^https?:\/\//i.test(trimmed)) {
+        try {
+            const parsed = new URL(trimmed);
+            return parsed.pathname || trimmed;
+        } catch {
+            return trimmed;
+        }
+    }
+    return trimmed;
+}
+
+function toBooleanValue(value) {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') return value.trim().toLowerCase() === 'true';
+    return false;
+}
 
 // Valid fields per property type to avoid sending default/irrelevant data
 const TYPE_FIELDS = {
@@ -122,7 +179,8 @@ const TYPE_FIELDS = {
     plot:      ['plotAreaSqYd', 'facingDirection', 'plotDimensions', 'govApprovedCertificate'],
     house:     ['plotAreaSqYd', 'bedrooms', 'bathrooms', 'numberOfFloors', 'furnishingStatus', 'facingDirection', 'ageOfProperty'],
     commercial:['floorNumber', 'numberOfFloors', 'furnishingStatus', 'washrooms', 'ageOfProperty', 'facingDirection', 'govApprovedCertificate', 'commercialType', 'floorDetails'],
-    farmland:  ['totalLandArea', 'pricePerAcre', 'landType', 'govApprovedCertificate']
+    farmland:  ['totalLandArea', 'pricePerAcre', 'landType', 'govApprovedCertificate'],
+    pg:        ['depositAmount', 'availableFrom', 'sharingType', 'genderAllowed', 'foodIncluded', 'ac', 'attachedBathroom', 'furnished']
 };
 
 
@@ -154,6 +212,10 @@ export function buildPropertyPayload(form, type, existingId = null) {
         0;
 
     const propertyTypeName = TYPE_LABEL_MAP[type] || 'Apartment';
+    const mappedPrice =
+        type === 'pg'
+            ? Number(form.monthlyRent) || Number(form.price) || 0
+            : Number(form.price) || 0;
 
     // For commercial, subType = commercial category; for others, same as type label
     const subType =
@@ -165,7 +227,7 @@ export function buildPropertyPayload(form, type, existingId = null) {
 
     const payload = {
         propertyTitle:      String(form.title || '').trim(),
-        price:              Number(form.price) || 0,
+        price:              mappedPrice,
         propertyType:       propertyTypeName,
         propertySubType:    subType,
         isLoanProviding:    Boolean(form.loanSupport),
@@ -190,6 +252,14 @@ export function buildPropertyPayload(form, type, existingId = null) {
         pricePerAcre:       valid.includes('pricePerAcre') ? Number(form.pricePerAcre) || 0 : 0,
         floorDetails:       valid.includes('floorDetails') ? form.floorDetails || '' : '',
         landType:           valid.includes('landType') ? form.landType || '' : '',
+        depositAmount:      valid.includes('depositAmount') ? Number(form.depositAmount) || 0 : 0,
+        availableFrom:      valid.includes('availableFrom') ? form.availableFrom || '' : '',
+        sharingType:        valid.includes('sharingType') ? form.sharingType || '' : '',
+        genderAllowed:      valid.includes('genderAllowed') ? form.genderAllowed || '' : '',
+        foodIncluded:       valid.includes('foodIncluded') ? toBooleanValue(form.foodIncluded) : false,
+        ac:                 valid.includes('ac') ? toBooleanValue(form.ac) : false,
+        attachedBathroom:   valid.includes('attachedBathroom') ? toBooleanValue(form.attachedBathroom) : false,
+        furnished:          valid.includes('furnished') ? toBooleanValue(form.furnished) : false,
         ...amenityFlags,
         imageUrls:          Array.isArray(form.images) ? form.images : [],
         videoUrl1:          form.shortVideoUrl || '',
@@ -232,11 +302,15 @@ export function normalizeProperty(data) {
         .filter(label => typeAmenitySet.has(label));
 
     const valid = TYPE_FIELDS[type] || [];
+    const createdAt = data.createdAt || data.CreatedAt || '';
+    const updatedAt = data.updatedAt || data.UpdatedAt || '';
+    const createdBy = data.createdBy || data.CreatedBy || '';
+    const updatedBy = data.updatedBy || data.UpdatedBy || '';
 
     return {
         id:             data.propertiesDetailsId || data.id || '',
         title:          data.propertyTitle       || data.title || '',
-        price:          Number(data.price)       || 0,
+        price:          Number(data.monthlyRent ?? data.price) || 0,
         type,
         subType:        data.propertySubType     || '',
         loanSupport:    data.isLoanProviding      || false,
@@ -258,13 +332,30 @@ export function normalizeProperty(data) {
         pricePerAcre:   valid.includes('pricePerAcre') ? Number(data.pricePerAcre) || 0 : 0,
         floorDetails:   valid.includes('floorDetails') ? data.floorDetails || '' : '',
         landType:       valid.includes('landType') ? data.landType || '' : '',
+        monthlyRent:    type === 'pg' ? Number(data.monthlyRent ?? data.price) || 0 : 0,
+        depositAmount:  valid.includes('depositAmount') ? Number(data.depositAmount) || 0 : 0,
+        availableFrom:  valid.includes('availableFrom') ? data.availableFrom || '' : '',
+        sharingType:    valid.includes('sharingType') ? data.sharingType || '' : '',
+        genderAllowed:  valid.includes('genderAllowed') ? data.genderAllowed || '' : '',
+        foodIncluded:   valid.includes('foodIncluded') ? toBooleanValue(data.foodIncluded ?? data.hasFoodIncluded) : '',
+        ac:             valid.includes('ac') ? toBooleanValue(data.ac ?? data.hasAC) : '',
+        attachedBathroom: valid.includes('attachedBathroom') ? toBooleanValue(data.attachedBathroom ?? data.hasAttachedBathroom) : '',
+        furnished:      valid.includes('furnished') ? toBooleanValue(data.furnished ?? data.isFurnished) : '',
         ageYears:       valid.includes('ageOfProperty') ? Number(data.ageOfProperty) || 0 : 0,
         amenities,
-        images:         typeof data.imageUrls === 'string' && data.imageUrls
-                            ? data.imageUrls.split(';').filter(Boolean)
-                            : Array.isArray(data.imageUrls) ? data.imageUrls
-                            : Array.isArray(data.images)    ? data.images
-                            : [],
+        images:         IMAGE_SLOT_KEYS
+                            .map(key => resolveAssetUrl(data[key]))
+                            .filter(value => typeof value === 'string' && value.trim() !== '')
+                            .map(value => value.trim())
+                            .concat(
+                                IMAGE_SLOT_KEYS.some(key => typeof data[key] === 'string' && data[key].trim() !== '')
+                                    ? []
+                                    : typeof data.imageUrls === 'string' && data.imageUrls
+                                        ? data.imageUrls.split(';').map(resolveAssetUrl).filter(Boolean)
+                                        : Array.isArray(data.imageUrls) ? data.imageUrls.map(resolveAssetUrl).filter(Boolean)
+                                        : Array.isArray(data.images) ? data.images.map(resolveAssetUrl).filter(Boolean)
+                                        : []
+                            ),
         shortVideoUrl:  data.videoUrl1            || '',
         fullVideoUrl:   data.videoUrl2            || '',
         description:    data.description          || '',
@@ -279,6 +370,10 @@ export function normalizeProperty(data) {
         status:         (data.propertyStatus || data.status || 'active').trim().toLowerCase(),
         isActive:       data.isActive ?? true,
         listedDate:     data.listedDate           || new Date().toISOString().split('T')[0],
+        createdBy,
+        createdAt,
+        updatedBy,
+        updatedAt,
     };
 }
 
@@ -323,24 +418,30 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
         0;
 
     const propertyTypeName = TYPE_LABEL_MAP[type] || 'Apartment';
+    const mappedPrice =
+        type === 'pg'
+            ? Number(form.monthlyRent) || Number(form.price) || 0
+            : Number(form.price) || 0;
     const subType = type === 'commercial'
         ? (form.commercialType || propertyTypeName)
         : propertyTypeName;
 
     const valid = TYPE_FIELDS[type] || [];
+    const listingStatus = String(form.status || '').trim().toLowerCase() === 'sold' ? 'sold' : 'rent';
 
     const fd = new FormData();
 
     if (existingId) fd.append('PropertiesDetailsId', existingId);
 
     fd.append('PropertyTitle',      String(form.title || '').trim());
-    fd.append('Price',              String(Number(form.price) || 0));
+    fd.append('Price',              String(mappedPrice));
     fd.append('PropertyType',       propertyTypeName);
     fd.append('PropertySubType',    subType);
     fd.append('IsLoanProviding',    String(Boolean(form.loanSupport)));
     fd.append('LoanPercentage',     String(form.loanSupport ? (Number(form.loanPercentage) || 0) : 0));
     fd.append('IsActive',           'true');
-    fd.append('PropertyStatus',     form.status === 'sold' ? 'Sold' : 'Active');
+    fd.append('IsRent',             String(listingStatus !== 'sold'));
+    fd.append('PropertyStatus',     listingStatus === 'sold' ? 'Sold' : 'Active');
     fd.append('PropertySqFt',       String(builtSqFt));
 
     fd.append('PlotAreaSqYd',       valid.includes('plotAreaSqYd') ? String(Number(form.plotArea) || 0) : '0');
@@ -360,6 +461,15 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
     fd.append('FurnishingStatus',   valid.includes('furnishingStatus') ? form.furnishing || '' : '');
     fd.append('FacingDirection',    valid.includes('facingDirection') ? form.facing || '' : '');
     fd.append('AgeOfProperty',      valid.includes('ageOfProperty') ? String(Number(form.ageYears) || 0) : '0');
+    fd.append('MonthlyRent',        type === 'pg' ? String(mappedPrice) : '0');
+    fd.append('DepositAmount',      valid.includes('depositAmount') ? String(Number(form.depositAmount) || 0) : '0');
+    fd.append('AvailableFrom',      valid.includes('availableFrom') ? form.availableFrom || '' : '');
+    fd.append('SharingType',        valid.includes('sharingType') ? form.sharingType || '' : '');
+    fd.append('GenderAllowed',      valid.includes('genderAllowed') ? form.genderAllowed || '' : '');
+    fd.append('FoodIncluded',       valid.includes('foodIncluded') ? String(toBooleanValue(form.foodIncluded)) : 'false');
+    fd.append('HasAC',              valid.includes('ac') ? String(toBooleanValue(form.ac)) : 'false');
+    fd.append('HasAttachedBathroom', valid.includes('attachedBathroom') ? String(toBooleanValue(form.attachedBathroom)) : 'false');
+    fd.append('IsFurnished',        valid.includes('furnished') ? String(toBooleanValue(form.furnished)) : 'false');
     fd.append('VideoUrl1',       extractVideoUrl(form.shortVideoUrl));
     fd.append('VideoUrl2',       extractVideoUrl(form.fullVideoUrl));
     fd.append('Description',     form.description || '');
@@ -388,10 +498,16 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
 
     // ── Images ────────────────────────────────────────────────────────────
     // 1) Existing image URLs → semicolon-separated single string (matches DB format)
+    const slotValues = IMAGE_SLOT_KEYS.map((_, index) => imageFiles[index] || (Array.isArray(form.images) ? form.images[index] : ''));
+    IMAGE_SLOT_KEYS.forEach((key, index) => {
+        fd.append(key, getImageSlotValue(slotValues[index]));
+    });
+
     const existingImages = (Array.isArray(form.images) ? form.images : [])
+        .slice(0, IMAGE_SLOT_KEYS.length)
         .filter(img => typeof img === 'string' && (img.startsWith('http') || img.startsWith('/')));
     if (existingImages.length > 0) {
-        fd.append('ImageUrls', existingImages.join(';'));
+        fd.append('ImageUrls', existingImages.map(toStoredImagePath).join(';'));
     }
 
     // 2) New File objects (compressed uploads)
@@ -405,6 +521,26 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
     console.groupEnd();
 
     return fd;
+}
+
+function getImageName(value) {
+    if (!value) return '';
+    if (value instanceof File) return value.name;
+
+    if (typeof value === 'string') {
+        const clean = value.split('?')[0];
+        const parts = clean.split('/').filter(Boolean);
+        return parts[parts.length - 1] || clean;
+    }
+
+    return '';
+}
+
+function getImageSlotValue(value) {
+    if (!value) return '';
+    if (value instanceof File) return value.name;
+    if (typeof value === 'string') return toStoredImagePath(value);
+    return '';
 }
 
 // ── Status code → user-friendly message ───────────────────────────────────

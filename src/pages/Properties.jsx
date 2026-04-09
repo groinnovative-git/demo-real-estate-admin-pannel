@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import {
     Search, Filter, MapPin, Edit2, Trash2, Eye,
     X, AlertTriangle, Loader,
-    Home, Building, TreePine, Landmark, Store, Leaf
+    Home, Building, TreePine, Landmark, Store, Leaf, Bed
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { useAuth } from '../context/AuthContext';
@@ -15,11 +15,11 @@ import Toast from '../components/Toast';
 import './Properties.css';
 
 const TYPE_ICONS = {
-    apartment: Building, villa: TreePine, plot: Landmark, house: Home, commercial: Store, farmland: Leaf,
+    apartment: Building, villa: TreePine, plot: Landmark, house: Home, commercial: Store, farmland: Leaf, pg: Bed,
 };
 const TYPE_LABELS = {
     apartment: 'Apartment', villa: 'Villa', plot: 'Plot',
-    house: 'Individual House', commercial: 'Commercial', farmland: 'Farm Land',
+    house: 'Individual House', commercial: 'Commercial', farmland: 'Farm Land', pg: 'PG',
 };
 
 function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
@@ -252,6 +252,7 @@ export default function Properties() {
                             <option value="house">Individual House</option>
                             <option value="commercial">Commercial</option>
                             <option value="farmland">Farm Land</option>
+                            <option value="pg">PG</option>
                         </select>
                     </div>
                     

@@ -88,6 +88,30 @@
     gap: 12px;
 }
 
+.pm-audit-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 7px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(13, 105, 51, 0.16);
+    background: linear-gradient(135deg, rgba(240, 253, 244, 0.92), rgba(236, 253, 245, 0.86));
+}
+
+.pm-audit-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #0d6933;
+    white-space: nowrap;
+}
+
+.pm-audit-date {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
 .pm-close {
     display: flex;
     align-items: center;
@@ -121,6 +145,22 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
     white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .pm-header {
+        align-items: flex-start;
+    }
+
+    .pm-header-right {
+        align-items: flex-end;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .pm-audit-badge {
+        width: 100%;
+    }
 }
 
 .pm-header-badge.active-badge {

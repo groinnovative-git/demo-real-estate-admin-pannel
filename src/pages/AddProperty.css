@@ -540,6 +540,19 @@
     font-weight: 400;
 }
 
+.premium-input--error {
+    border-color: #f87171;
+    background: #fff7f7;
+    box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.12);
+}
+
+.premium-field-error {
+    margin-top: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #b91c1c;
+}
+
 /* Checkboxes */
 .premium-checkbox-grid {
     display: grid;

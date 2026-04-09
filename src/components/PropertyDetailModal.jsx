@@ -9,8 +9,34 @@ import './PropertyModalPremium.css';
 const TYPE_LABELS = {
     apartment: 'Apartment', villa: 'Villa', plot: 'Plot',
     house: 'Individual House', commercial: 'Commercial Space',
-    farmland: 'Farm Land'
+    farmland: 'Farm Land', pg: 'PG'
 };
+
+function getLatestAuditMeta(property) {
+    const createdAt = property.createdAt ? new Date(property.createdAt) : null;
+    const updatedAt = property.updatedAt ? new Date(property.updatedAt) : null;
+
+    const hasValidCreated = createdAt && !Number.isNaN(createdAt.getTime());
+    const hasValidUpdated = updatedAt && !Number.isNaN(updatedAt.getTime());
+
+    if (hasValidUpdated) {
+        return {
+            label: 'Updated',
+            actor: property.updatedBy || property.createdBy || 'Unknown',
+            date: updatedAt,
+        };
+    }
+
+    if (hasValidCreated) {
+        return {
+            label: 'Created',
+            actor: property.createdBy || 'Unknown',
+            date: createdAt,
+        };
+    }
+
+    return null;
+}
 
 function Detail({ label, value }) {
     if (!value && value !== 0) return null;
@@ -31,6 +57,7 @@ export default function PropertyDetailModal({ property: p, onClose }) {
 
     const [modalVideoId, setModalVideoId] = useState(null);
     const [modalLabel, setModalLabel]     = useState('');
+    const latestAudit = getLatestAuditMeta(p);
 
     // Support new fields AND backward-compat with legacy `youtube` field
     const shortId = extractYouTubeVideoId(p.shortVideoUrl || '');
@@ -51,6 +78,22 @@ export default function PropertyDetailModal({ property: p, onClose }) {
                         <div className="pm-header-title" style={{ fontSize: '1.1rem' }}>{p.title}</div>
                     </div>
                     <div className="pm-header-right">
+                        {latestAudit && (
+                            <div className="pm-audit-badge">
+                                <div className="pm-audit-label">
+                                    {latestAudit.label} by {latestAudit.actor}
+                                </div>
+                                <div className="pm-audit-date">
+                                    {latestAudit.date.toLocaleString('en-IN', {
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                    })}
+                                </div>
+                            </div>
+                        )}
                         <span className={`pm-header-badge ${p.status === 'active' ? 'active-badge' : 'sold-badge'}`}>
                             <span className="pm-dot" />
                             {p.status === 'active' ? 'Active' : 'Sold'}
@@ -164,7 +207,19 @@ export default function PropertyDetailModal({ property: p, onClose }) {
                                 <Detail label="Land Type"       value={p.landType} />
                             </>
                         )}
-                        {(p.type !== 'house') && (
+                        {(p.type === 'pg') && (
+                            <>
+                                <Detail label="Deposit Amount" value={p.depositAmount ? `${Number(p.depositAmount).toLocaleString('en-IN')}` : undefined} />
+                                <Detail label="Available From" value={p.availableFrom ? new Date(p.availableFrom).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : undefined} />
+                                <Detail label="Sharing Type" value={p.sharingType} />
+                                <Detail label="PG Type" value={p.genderAllowed} />
+                                <Detail label="Food Included" value={p.foodIncluded !== '' && p.foodIncluded !== undefined ? (p.foodIncluded ? 'Yes' : 'No') : undefined} />
+                                <Detail label="AC / Non-AC" value={p.ac !== '' && p.ac !== undefined ? (p.ac ? 'AC' : 'Non-AC') : undefined} />
+                                <Detail label="Attached Bathroom" value={p.attachedBathroom !== '' && p.attachedBathroom !== undefined ? (p.attachedBathroom ? 'Yes' : 'No') : undefined} />
+                                <Detail label="Furnished" value={p.furnished !== '' && p.furnished !== undefined ? (p.furnished ? 'Yes' : 'No') : undefined} />
+                            </>
+                        )}
+                        {(p.type !== 'house' && p.type !== 'pg') && (
                             <Detail label="Approval" value={p.govApprovedCertificate || undefined} />
                         )}
                         <Detail label="Loan Support"   value={p.loanSupport !== undefined ? (p.loanSupport ? 'Available' : 'Not Available') : undefined} />
