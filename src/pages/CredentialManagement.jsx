@@ -424,12 +424,22 @@ export default function CredentialManagement() {
     const [deleting, setDeleting]     = useState(false);
 
     // Tabs, Search and Pagination
-    const [activeRole, setActiveRole]   = useState('Admin');
+    const [activeRole, setActiveRole]   = useState(() => {
+        if (isManager) return 'Manager';
+        if (isAdmin || isSuperAdmin) return 'Admin';
+        return 'Employee';
+    });
     const [searchTerm, setSearchTerm]   = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const ROWS_PER_PAGE = 10;
 
     const [toasts, setToasts] = useState([]);
+
+    const visibleRoles = useMemo(() => {
+        if (isSuperAdmin || isAdmin) return ['Admin', 'Manager', 'Employee'];
+        if (isManager) return ['Manager', 'Employee'];
+        return [];
+    }, [isAdmin, isSuperAdmin, isManager]);
 
     const showToast = (type, msg) => {
         const id = Date.now();
@@ -443,6 +453,12 @@ export default function CredentialManagement() {
             navigate('/dashboard', { replace: true });
         }
     }, [isAdmin, isSuperAdmin, isManager, navigate]);
+
+    useEffect(() => {
+        if (visibleRoles.length > 0 && !visibleRoles.includes(activeRole)) {
+            setActiveRole(visibleRoles[0]);
+        }
+    }, [activeRole, visibleRoles]);
 
     useEffect(() => {
         let cancelled = false;
@@ -573,7 +589,7 @@ export default function CredentialManagement() {
 
             {/* Role Tabs */}
             <div className="cred-role-tabs">
-                {['Admin', 'Manager', 'Employee'].map(role => {
+                {visibleRoles.map(role => {
                     return (
                         <button
                             key={role}

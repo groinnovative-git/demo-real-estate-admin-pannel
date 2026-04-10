@@ -135,6 +135,39 @@ const BACKEND_TYPE_TO_KEY = Object.fromEntries(
 const IMAGE_SLOT_KEYS = ['img1', 'img2', 'img3', 'img4', 'img5'];
 const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
+function toNumericValue(...values) {
+    for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value;
+        }
+
+        if (typeof value === 'string') {
+            const cleaned = value.replace(/[^0-9.-]/g, '').trim();
+            if (!cleaned) continue;
+
+            const parsed = Number(cleaned);
+            if (Number.isFinite(parsed)) {
+                return parsed;
+            }
+        }
+    }
+
+    return 0;
+}
+
+export function getPropertyDisplayPrice(property) {
+    if (!property) return 0;
+
+    return toNumericValue(
+        property.price,
+        property.Price,
+        property.monthlyRent,
+        property.MonthlyRent,
+        property.propertyPrice,
+        property.PropertyPrice
+    );
+}
+
 function resolveAssetUrl(value) {
     if (typeof value !== 'string') return '';
     const trimmed = value.trim();
@@ -170,6 +203,36 @@ function toBooleanValue(value) {
     if (typeof value === 'boolean') return value;
     if (typeof value === 'string') return value.trim().toLowerCase() === 'true';
     return false;
+}
+
+function getListingFlags(listingTypeValue) {
+    const listingType = String(listingTypeValue || '').trim().toLowerCase() === 'sale' ? 'sale' : 'rent';
+
+    return {
+        listingType,
+        isRental: listingType === 'rent',
+        isSale: listingType === 'sale',
+    };
+}
+
+function splitDistance(value) {
+    if (value === null || value === undefined) return { dist: '', unit: 'km' };
+
+    const text = String(value).trim();
+    if (!text) return { dist: '', unit: 'km' };
+
+    return {
+        dist: text.split(' ')[0] || '',
+        unit: text.includes('m') && !text.includes('km') ? 'm' : 'km',
+    };
+}
+
+function resolveListingStatus(data) {
+    const rawStatus = String(data.propertyStatus || data.status || '').trim().toLowerCase();
+    if (rawStatus === 'sold' || rawStatus === 'sale') return 'sold';
+    if (rawStatus === 'active' || rawStatus === 'rent') return 'active';
+
+    return 'active';
 }
 
 // Valid fields per property type to avoid sending default/irrelevant data
@@ -216,6 +279,8 @@ export function buildPropertyPayload(form, type, existingId = null) {
         type === 'pg'
             ? Number(form.monthlyRent) || Number(form.price) || 0
             : Number(form.price) || 0;
+    const { listingType, isRental, isSale } = getListingFlags(form.listingType);
+    const propertyStatus = String(form.status || '').trim().toLowerCase() === 'sold' ? 'sold' : 'active';
 
     // For commercial, subType = commercial category; for others, same as type label
     const subType =
@@ -231,8 +296,11 @@ export function buildPropertyPayload(form, type, existingId = null) {
         propertyType:       propertyTypeName,
         propertySubType:    subType,
         isLoanProviding:    Boolean(form.loanSupport),
-        loanPercentage:     form.loanSupport ? (Number(form.loanPercentage) || 0) : 0,
-        isActive:           true,
+        propertyLoanPercentage: form.loanSupport ? (Number(form.loanPercentage) || 0) : 0,
+        isActive:           propertyStatus === 'active',
+        isRental,
+        isSale,
+        propertyStatus:     propertyStatus === 'sold' ? 'Sold' : 'Active',
         propertySqFt:       builtSqFt,
         
         plotAreaSqYd:       valid.includes('plotAreaSqYd') ? Number(form.plotArea) || 0 : 0,
@@ -260,6 +328,11 @@ export function buildPropertyPayload(form, type, existingId = null) {
         ac:                 valid.includes('ac') ? toBooleanValue(form.ac) : false,
         attachedBathroom:   valid.includes('attachedBathroom') ? toBooleanValue(form.attachedBathroom) : false,
         furnished:          valid.includes('furnished') ? toBooleanValue(form.furnished) : false,
+        hospitalDistance:   form.nearbyHospitalDist ? `${form.nearbyHospitalDist} ${form.nearbyHospitalUnit}` : '',
+        collegeDistance:    form.nearbyCollegeDist ? `${form.nearbyCollegeDist} ${form.nearbyCollegeUnit}` : '',
+        schoolDistance:     form.nearbySchoolDist ? `${form.nearbySchoolDist} ${form.nearbySchoolUnit}` : '',
+        railWayStationDistance: form.nearbyStationDist ? `${form.nearbyStationDist} ${form.nearbyStationUnit}` : '',
+        busStandDistance:   form.nearbyBusStandDist ? `${form.nearbyBusStandDist} ${form.nearbyBusStandUnit}` : '',
         ...amenityFlags,
         imageUrls:          Array.isArray(form.images) ? form.images : [],
         videoUrl1:          form.shortVideoUrl || '',
@@ -306,15 +379,24 @@ export function normalizeProperty(data) {
     const updatedAt = data.updatedAt || data.UpdatedAt || '';
     const createdBy = data.createdBy || data.CreatedBy || '';
     const updatedBy = data.updatedBy || data.UpdatedBy || '';
+    const status = resolveListingStatus(data);
+    const isRental = toBooleanValue(data.isRental);
+    const isSale = toBooleanValue(data.isSale);
+    const mappedPrice = getPropertyDisplayPrice(data);
+    const hospitalDistance = splitDistance(data.hospitalDistance ?? data.HospitalDistance ?? data.nearbyHospital);
+    const collegeDistance = splitDistance(data.collegeDistance ?? data.CollegeDistance ?? data.nearbyCollege);
+    const schoolDistance = splitDistance(data.schoolDistance ?? data.SchoolDistance ?? data.nearbySchool);
+    const stationDistance = splitDistance(data.railWayStationDistance ?? data.RailWayStationDistance ?? data.nearbyStation);
+    const busStandDistance = splitDistance(data.busStandDistance ?? data.BusStandDistance ?? data.nearbyBusStand);
 
     return {
         id:             data.propertiesDetailsId || data.id || '',
         title:          data.propertyTitle       || data.title || '',
-        price:          Number(data.monthlyRent ?? data.price) || 0,
+        price:          mappedPrice,
         type,
         subType:        data.propertySubType     || '',
         loanSupport:    data.isLoanProviding      || false,
-        loanPercentage: Number(data.loanPercentage) || 0,
+        loanPercentage: Number(data.propertyLoanPercentage ?? data.PropertyLoanPercentage ?? data.loanPercentage) || 0,
         area:           valid.includes('plotAreaSqYd') && !valid.includes('bedrooms') ? 0 : Number(data.propertySqFt) || 0, // area is essentially BuiltUpArea/CarpetArea
         plotArea:       valid.includes('plotAreaSqYd') ? Number(data.plotAreaSqYd) || 0 : 0,
         bhk:            valid.includes('bedrooms') ? Number(data.bedrooms) || 0 : 0,
@@ -332,7 +414,7 @@ export function normalizeProperty(data) {
         pricePerAcre:   valid.includes('pricePerAcre') ? Number(data.pricePerAcre) || 0 : 0,
         floorDetails:   valid.includes('floorDetails') ? data.floorDetails || '' : '',
         landType:       valid.includes('landType') ? data.landType || '' : '',
-        monthlyRent:    type === 'pg' ? Number(data.monthlyRent ?? data.price) || 0 : 0,
+        monthlyRent:    type === 'pg' ? mappedPrice : 0,
         depositAmount:  valid.includes('depositAmount') ? Number(data.depositAmount) || 0 : 0,
         availableFrom:  valid.includes('availableFrom') ? data.availableFrom || '' : '',
         sharingType:    valid.includes('sharingType') ? data.sharingType || '' : '',
@@ -362,12 +444,14 @@ export function normalizeProperty(data) {
         location:       data.location             || '',
         mapEmbedSrc:    data.locationIframe        || '',
         // ── Nearby Locations ──
-        nearbyHospitalDist: data.nearbyHospital ? String(data.nearbyHospital).split(' ')[0] : '', nearbyHospitalUnit: data.nearbyHospital && String(data.nearbyHospital).includes('m') && !String(data.nearbyHospital).includes('km') ? 'm' : 'km',
-        nearbyCollegeDist: data.nearbyCollege ? String(data.nearbyCollege).split(' ')[0] : '', nearbyCollegeUnit: data.nearbyCollege && String(data.nearbyCollege).includes('m') && !String(data.nearbyCollege).includes('km') ? 'm' : 'km',
-        nearbySchoolDist: data.nearbySchool ? String(data.nearbySchool).split(' ')[0] : '', nearbySchoolUnit: data.nearbySchool && String(data.nearbySchool).includes('m') && !String(data.nearbySchool).includes('km') ? 'm' : 'km',
-        nearbyStationDist: data.nearbyStation ? String(data.nearbyStation).split(' ')[0] : '', nearbyStationUnit: data.nearbyStation && String(data.nearbyStation).includes('m') && !String(data.nearbyStation).includes('km') ? 'm' : 'km',
-        nearbyBusStandDist: data.nearbyBusStand ? String(data.nearbyBusStand).split(' ')[0] : '', nearbyBusStandUnit: data.nearbyBusStand && String(data.nearbyBusStand).includes('m') && !String(data.nearbyBusStand).includes('km') ? 'm' : 'km',
-        status:         (data.propertyStatus || data.status || 'active').trim().toLowerCase(),
+        nearbyHospitalDist: hospitalDistance.dist, nearbyHospitalUnit: hospitalDistance.unit,
+        nearbyCollegeDist: collegeDistance.dist, nearbyCollegeUnit: collegeDistance.unit,
+        nearbySchoolDist: schoolDistance.dist, nearbySchoolUnit: schoolDistance.unit,
+        nearbyStationDist: stationDistance.dist, nearbyStationUnit: stationDistance.unit,
+        nearbyBusStandDist: busStandDistance.dist, nearbyBusStandUnit: busStandDistance.unit,
+        status,
+        isRental,
+        isSale,
         isActive:       data.isActive ?? true,
         listedDate:     data.listedDate           || new Date().toISOString().split('T')[0],
         createdBy,
@@ -427,7 +511,8 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
         : propertyTypeName;
 
     const valid = TYPE_FIELDS[type] || [];
-    const listingStatus = String(form.status || '').trim().toLowerCase() === 'sold' ? 'sold' : 'rent';
+    const { listingType, isRental, isSale } = getListingFlags(form.listingType);
+    const propertyStatus = String(form.status || '').trim().toLowerCase() === 'sold' ? 'sold' : 'active';
 
     const fd = new FormData();
 
@@ -438,10 +523,11 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
     fd.append('PropertyType',       propertyTypeName);
     fd.append('PropertySubType',    subType);
     fd.append('IsLoanProviding',    String(Boolean(form.loanSupport)));
-    fd.append('LoanPercentage',     String(form.loanSupport ? (Number(form.loanPercentage) || 0) : 0));
-    fd.append('IsActive',           'true');
-    fd.append('IsRent',             String(listingStatus !== 'sold'));
-    fd.append('PropertyStatus',     listingStatus === 'sold' ? 'Sold' : 'Active');
+    fd.append('PropertyLoanPercentage', String(form.loanSupport ? (Number(form.loanPercentage) || 0) : 0));
+    fd.append('IsActive',           String(propertyStatus === 'active'));
+    fd.append('IsRental',           String(isRental));
+    fd.append('IsSale',             String(isSale));
+    fd.append('PropertyStatus',     propertyStatus === 'sold' ? 'Sold' : 'Active');
     fd.append('PropertySqFt',       String(builtSqFt));
 
     fd.append('PlotAreaSqYd',       valid.includes('plotAreaSqYd') ? String(Number(form.plotArea) || 0) : '0');
@@ -484,11 +570,11 @@ export function buildPropertyFormData(form, type, imageFiles = [], existingId = 
             fd.append(key, '');
         }
     };
-    appendLoc('NearbyHospital', form.nearbyHospitalDist, form.nearbyHospitalUnit);
-    appendLoc('NearbyCollege', form.nearbyCollegeDist, form.nearbyCollegeUnit);
-    appendLoc('NearbySchool', form.nearbySchoolDist, form.nearbySchoolUnit);
-    appendLoc('NearbyStation', form.nearbyStationDist, form.nearbyStationUnit);
-    appendLoc('NearbyBusStand', form.nearbyBusStandDist, form.nearbyBusStandUnit);
+    appendLoc('HospitalDistance', form.nearbyHospitalDist, form.nearbyHospitalUnit);
+    appendLoc('CollegeDistance', form.nearbyCollegeDist, form.nearbyCollegeUnit);
+    appendLoc('SchoolDistance', form.nearbySchoolDist, form.nearbySchoolUnit);
+    appendLoc('RailWayStationDistance', form.nearbyStationDist, form.nearbyStationUnit);
+    appendLoc('BusStandDistance', form.nearbyBusStandDist, form.nearbyBusStandUnit);
 
     // Amenity boolean flags — convert camelCase to PascalCase for C# model binding
     Object.entries(amenityFlags).forEach(([field, val]) => {

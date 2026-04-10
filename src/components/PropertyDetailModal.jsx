@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { X, MapPin, Bed, Maximize2, Calendar, CheckCircle } from 'lucide-react';
+import { X, MapPin, Bed, Maximize2, Calendar, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import VideoPreviewCard from './VideoPreviewCard';
 import VideoModal from './VideoModal';
 import { extractYouTubeVideoId } from './PropertyVideoSection';
+import { getPropertyDisplayPrice } from '../utils/propertyPayloadMapper';
 import './PropertyModalPremium.css';
 
 const TYPE_LABELS = {
@@ -11,6 +12,12 @@ const TYPE_LABELS = {
     house: 'Individual House', commercial: 'Commercial Space',
     farmland: 'Farm Land', pg: 'PG'
 };
+
+function getListingTypeLabel(property) {
+    if (property?.isSale) return 'Sale';
+    if (property?.isRental) return 'Rent';
+    return '';
+}
 
 function getLatestAuditMeta(property) {
     const createdAt = property.createdAt ? new Date(property.createdAt) : null;
@@ -48,6 +55,11 @@ function Detail({ label, value }) {
     );
 }
 
+function formatDistance(dist, unit) {
+    if (!dist && dist !== 0) return '';
+    return `${dist} ${unit || 'km'}`.trim();
+}
+
 export default function PropertyDetailModal({ property: p, onClose }) {
     useEffect(() => {
         const originalStyle = window.getComputedStyle(document.body).overflow;
@@ -57,16 +69,55 @@ export default function PropertyDetailModal({ property: p, onClose }) {
 
     const [modalVideoId, setModalVideoId] = useState(null);
     const [modalLabel, setModalLabel]     = useState('');
+    const [activeImageIndex, setActiveImageIndex] = useState(0);
     const latestAudit = getLatestAuditMeta(p);
+    const listingTypeLabel = getListingTypeLabel(p);
+    const displayPrice = getPropertyDisplayPrice(p);
+    const nearbyItems = [
+        { label: 'Hospital', value: formatDistance(p.nearbyHospitalDist, p.nearbyHospitalUnit) },
+        { label: 'College', value: formatDistance(p.nearbyCollegeDist, p.nearbyCollegeUnit) },
+        { label: 'School', value: formatDistance(p.nearbySchoolDist, p.nearbySchoolUnit) },
+        { label: 'Railway Station', value: formatDistance(p.nearbyStationDist, p.nearbyStationUnit) },
+        { label: 'Bus Stand', value: formatDistance(p.nearbyBusStandDist, p.nearbyBusStandUnit) },
+    ].filter(item => item.value);
 
     // Support new fields AND backward-compat with legacy `youtube` field
     const shortId = extractYouTubeVideoId(p.shortVideoUrl || '');
     const fullId  = extractYouTubeVideoId(p.fullVideoUrl || p.youtube || '');
 
     const hasVideos = shortId || fullId;
+    const galleryImages = Array.isArray(p.images) && p.images.length > 0
+        ? p.images
+        : [`https://placehold.co/780x240/f1f5f9/f5b642?text=${p.type}`];
 
     function openModal(videoId, label) { setModalVideoId(videoId); setModalLabel(label); }
     function closeModal()              { setModalVideoId(null);    setModalLabel('');    }
+    function showPreviousImage() {
+        setActiveImageIndex(current => (
+            current === 0 ? galleryImages.length - 1 : current - 1
+        ));
+    }
+    function showNextImage() {
+        setActiveImageIndex(current => (
+            current === galleryImages.length - 1 ? 0 : current + 1
+        ));
+    }
+
+    useEffect(() => {
+        setActiveImageIndex(0);
+    }, [p.id]);
+
+    useEffect(() => {
+        if (galleryImages.length <= 1) return undefined;
+
+        const timer = window.setInterval(() => {
+            setActiveImageIndex(current => (
+                current === galleryImages.length - 1 ? 0 : current + 1
+            ));
+        }, 3500);
+
+        return () => window.clearInterval(timer);
+    }, [galleryImages.length]);
 
     return ReactDOM.createPortal(
         <div className="pm-overlay" onClick={onClose}>
@@ -94,6 +145,19 @@ export default function PropertyDetailModal({ property: p, onClose }) {
                                 </div>
                             </div>
                         )}
+                        {listingTypeLabel && (
+                            <span
+                                className="pm-header-badge"
+                                style={{
+                                    borderColor: '#bfdbfe',
+                                    background: '#eff6ff',
+                                    color: '#1d4ed8',
+                                }}
+                            >
+                                <span className="pm-dot" style={{ background: '#2563eb' }} />
+                                {listingTypeLabel}
+                            </span>
+                        )}
                         <span className={`pm-header-badge ${p.status === 'active' ? 'active-badge' : 'sold-badge'}`}>
                             <span className="pm-dot" />
                             {p.status === 'active' ? 'Active' : 'Sold'}
@@ -116,17 +180,45 @@ export default function PropertyDetailModal({ property: p, onClose }) {
 
                 <div className="pm-body">
                     {/* Image Gallery */}
-                    {p.images && p.images.length > 0 ? (
-                        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
-                            {p.images.map((src, i) => (
-                                <img
-                                    key={i}
-                                    src={src}
-                                    alt={`${p.title} ${i + 1}`}
-                                    style={{ height: 220, minWidth: 320, objectFit: 'cover', borderRadius: 8, flexShrink: 0, border: '1px solid var(--card-border)' }}
-                                    onError={(e) => { e.target.src = `https://placehold.co/320x220/f1f5f9/f5b642?text=${p.type}`; }}
-                                />
-                            ))}
+                    {galleryImages.length > 0 ? (
+                        <div className="pm-carousel">
+                            <img
+                                src={galleryImages[activeImageIndex]}
+                                alt={`${p.title} ${activeImageIndex + 1}`}
+                                className="pm-carousel-image"
+                                onError={(e) => { e.target.src = `https://placehold.co/780x240/f1f5f9/f5b642?text=${p.type}`; }}
+                            />
+                            {galleryImages.length > 1 && (
+                                <>
+                                    <button
+                                        type="button"
+                                        className="pm-carousel-arrow pm-carousel-arrow--left"
+                                        onClick={showPreviousImage}
+                                        aria-label="Previous image"
+                                    >
+                                        <ChevronLeft size={22} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="pm-carousel-arrow pm-carousel-arrow--right"
+                                        onClick={showNextImage}
+                                        aria-label="Next image"
+                                    >
+                                        <ChevronRight size={22} />
+                                    </button>
+                                    <div className="pm-carousel-dots" aria-label="Image navigation">
+                                        {galleryImages.map((_, index) => (
+                                            <button
+                                                key={index}
+                                                type="button"
+                                                className={`pm-carousel-dot${index === activeImageIndex ? ' is-active' : ''}`}
+                                                onClick={() => setActiveImageIndex(index)}
+                                                aria-label={`Go to image ${index + 1}`}
+                                            />
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     ) : (
                         <img
@@ -157,7 +249,7 @@ export default function PropertyDetailModal({ property: p, onClose }) {
                     {/* Details Grid */}
                     <div className="pm-details-grid">
                         <Detail label="Type"           value={TYPE_LABELS[p.type] || p.type} />
-                        <Detail label="Price"          value={p.price ? `₹${Number(p.price).toLocaleString('en-IN')}` : undefined} />
+                        <Detail label="Price"          value={displayPrice ? `₹${displayPrice.toLocaleString('en-IN')}` : undefined} />
                         {(p.type === 'apartment' || p.type === 'commercial' || p.type === 'villa' || p.type === 'house') && (
                             <Detail label="Area"           value={p.area ? `${p.area} sqft` : undefined} />
                         )}
@@ -222,9 +314,24 @@ export default function PropertyDetailModal({ property: p, onClose }) {
                         {(p.type !== 'house' && p.type !== 'pg') && (
                             <Detail label="Approval" value={p.govApprovedCertificate || undefined} />
                         )}
-                        <Detail label="Loan Support"   value={p.loanSupport !== undefined ? (p.loanSupport ? 'Available' : 'Not Available') : undefined} />
-                        {p.loanSupport && <Detail label="Loan Percentage" value={p.loanPercentage ? `${p.loanPercentage}%` : undefined} />}
+                        {p.type !== 'pg' && (
+                            <Detail label="Loan Support" value={p.loanSupport !== undefined ? (p.loanSupport ? 'Available' : 'Not Available') : undefined} />
+                        )}
+                        {p.type !== 'pg' && p.loanSupport && (
+                            <Detail label="Loan Percentage" value={p.loanPercentage ? `${p.loanPercentage}%` : undefined} />
+                        )}
                     </div>
+
+                    {nearbyItems.length > 0 && (
+                        <>
+                            <div className="pm-section-title" style={{ marginTop: 10 }}>Nearby Locations</div>
+                            <div className="pm-details-grid">
+                                {nearbyItems.map(item => (
+                                    <Detail key={item.label} label={item.label} value={item.value} />
+                                ))}
+                            </div>
+                        </>
+                    )}
 
                     {/* Amenities */}
                     {p.amenities && p.amenities.length > 0 && (

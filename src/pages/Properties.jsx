@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
 import { useAuth } from '../context/AuthContext';
-import { getErrorMessage, normalizeProperty } from '../utils/propertyPayloadMapper';
+import { getErrorMessage, getPropertyDisplayPrice, normalizeProperty } from '../utils/propertyPayloadMapper';
 import * as propertyApi from '../api/propertyApi';
 import PropertyDetailModal from '../components/PropertyDetailModal';
 import EditPropertyModal from '../components/EditPropertyModal';
@@ -22,8 +22,17 @@ const TYPE_LABELS = {
     house: 'Individual House', commercial: 'Commercial', farmland: 'Farm Land', pg: 'PG',
 };
 
+function getListingTypeLabel(property) {
+    if (property?.isSale) return 'Sale';
+    if (property?.isRental) return 'Rent';
+    return '';
+}
+
 function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
     const Icon = TYPE_ICONS[property.type] || Building;
+    const displayPrice = getPropertyDisplayPrice(property);
+    const listingTypeLabel = getListingTypeLabel(property);
+
     return (
         <div className="property-card">
             {/* ── Image ── */}
@@ -41,8 +50,15 @@ function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
                     <Icon size={11} />
                     {TYPE_LABELS[property.type] || property.type}
                 </div>
-                <div className={`property-card-status-badge ${property.status === 'sold' ? 'badge-danger' : 'badge-success'}`}>
-                    {property.status === 'sold' ? 'Sold' : 'Active'}
+                {listingTypeLabel && (
+                    <div className="property-card-listing-badge">
+                        {listingTypeLabel}
+                    </div>
+                )}
+                <div className="property-card-badge-stack">
+                    <div className={`property-card-status-badge ${property.status === 'sold' ? 'badge-danger' : 'badge-success'}`}>
+                        {property.status === 'sold' ? 'Sold' : 'Active'}
+                    </div>
                 </div>
             </div>
 
@@ -53,9 +69,9 @@ function PropertyCard({ property, onView, onEdit, onDelete, isAdmin }) {
                     <MapPin size={12} />
                     <span>{property.location}</span>
                 </div>
-                {property.price > 0 && (
+                {displayPrice > 0 && (
                     <div className="property-card-price">
-                        ₹{Number(property.price).toLocaleString('en-IN')}
+                        ₹{displayPrice.toLocaleString('en-IN')}
                     </div>
                 )}
             </div>

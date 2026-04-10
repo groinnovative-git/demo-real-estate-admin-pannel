@@ -336,6 +336,16 @@ ul {
   box-shadow: var(--shadow-sm);
 }
 
+.form-control[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.form-control[type="number"]::-webkit-outer-spin-button,
+.form-control[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .form-control:focus {
   border-color: var(--green);
   box-shadow: 0 0 0 3px rgba(13, 105, 51, 0.15);

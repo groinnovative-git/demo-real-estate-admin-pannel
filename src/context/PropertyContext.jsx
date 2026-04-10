@@ -12,6 +12,25 @@ const initialState = {
     error:      null,
 };
 
+function getLatestPropertyTimestamp(property) {
+    const candidates = [
+        property?.updatedAt,
+        property?.createdAt,
+        property?.listedDate,
+    ];
+
+    for (const value of candidates) {
+        const time = Date.parse(value || '');
+        if (!Number.isNaN(time)) return time;
+    }
+
+    return 0;
+}
+
+function sortPropertiesNewestFirst(properties) {
+    return [...properties].sort((a, b) => getLatestPropertyTimestamp(b) - getLatestPropertyTimestamp(a));
+}
+
 function propertyReducer(state, action) {
     switch (action.type) {
         case 'SET_LOADING':
@@ -19,15 +38,15 @@ function propertyReducer(state, action) {
         case 'SET_ERROR':
             return { ...state, error: action.payload, loading: false };
         case 'SET_PROPERTIES':
-            return { ...state, properties: action.payload, loading: false, error: null };
+            return { ...state, properties: sortPropertiesNewestFirst(action.payload), loading: false, error: null };
         case 'ADD_PROPERTY':
-            return { ...state, properties: [action.payload, ...state.properties] };
+            return { ...state, properties: sortPropertiesNewestFirst([action.payload, ...state.properties]) };
         case 'UPDATE_PROPERTY':
             return {
                 ...state,
-                properties: state.properties.map(p =>
+                properties: sortPropertiesNewestFirst(state.properties.map(p =>
                     p.id === action.payload.id ? action.payload : p
-                ),
+                )),
             };
         case 'DELETE_PROPERTY':
             return { ...state, properties: state.properties.filter(p => p.id !== action.payload) };
@@ -77,7 +96,9 @@ export function PropertyProvider({ children }) {
         try {
             const response = await propertyApi.getAllProperties();
             const list     = Array.isArray(response.data) ? response.data : [];
-            const normalized = list.map(normalizeProperty).filter(p => p.isActive !== false);
+            const normalized = list
+                .map(normalizeProperty)
+                .filter(p => p && (p.status === 'sold' || p.isActive !== false));
             dispatch({ type: 'SET_PROPERTIES', payload: normalized });
             return normalized;
         } catch {
@@ -94,10 +115,16 @@ export function PropertyProvider({ children }) {
     };
 
     const addProperty = async (apiPayload) => {
-        const response   = await propertyApi.addProperty(apiPayload);
-        const normalized = normalizeProperty(response.data);
-        dispatch({ type: 'ADD_PROPERTY', payload: normalized });
-        return normalized;
+        const response = await propertyApi.addProperty(apiPayload);
+        const createdProperty = normalizeProperty(response.data);
+        const latestProperties = await fetchProperties();
+
+        if (createdProperty?.id) {
+            const refreshedProperty = latestProperties.find(property => property.id === createdProperty.id);
+            if (refreshedProperty) return refreshedProperty;
+        }
+
+        return createdProperty;
     };
 
     const updateProperty = async (apiPayload, id) => {

@@ -27,7 +27,7 @@
 .pm-modal {
     position: relative;
     z-index: 100000;
-    width: min(1000px, 100%);
+    width: min(1160px, 100%);
     max-height: 82vh;
     background: var(--card-bg-2, #fcfcfd);
     border-radius: 16px;
@@ -241,6 +241,86 @@
     flex-shrink: 0;
 }
 
+.pm-carousel {
+    position: relative;
+    width: 100%;
+    height: 280px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid var(--card-border);
+    background: #f8fafc;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+
+.pm-carousel-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    background: #f8fafc;
+}
+
+.pm-carousel-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    background: rgba(15, 23, 42, 0.45);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.18s ease;
+    z-index: 2;
+}
+
+.pm-carousel-arrow:hover {
+    background: rgba(15, 23, 42, 0.68);
+}
+
+.pm-carousel-arrow--left {
+    left: 16px;
+}
+
+.pm-carousel-arrow--right {
+    right: 16px;
+}
+
+.pm-carousel-dots {
+    position: absolute;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.34);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 2;
+}
+
+.pm-carousel-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.pm-carousel-dot.is-active {
+    background: #ffffff;
+    transform: scale(1.18);
+}
+
 /* Form Wrapper for Edit Modal */
 .pm-form {
     display: flex;
@@ -339,5 +419,12 @@
     }
     .pm-footer {
         padding: 14px 18px;
+    }
+    .pm-carousel {
+        height: 220px;
+    }
+    .pm-carousel-arrow {
+        width: 38px;
+        height: 38px;
     }
 }

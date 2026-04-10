@@ -131,10 +131,39 @@
     box-shadow: 0 1px 4px rgba(0,0,0,0.12);
 }
 
-.property-card-status-badge {
+.property-card-badge-stack {
     position: absolute;
     top: 11px;
     right: 11px;
+    display: flex;
+    align-items: flex-end;
+    z-index: 1;
+}
+
+.property-card-listing-badge,
+.property-card-status-badge {
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,0.6);
+}
+
+.property-card-listing-badge {
+    position: absolute;
+    left: 11px;
+    bottom: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.63rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #2563eb;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+    z-index: 1;
+}
+
+.property-card-status-badge {
     padding: 3px 10px;
     border-radius: 999px;
     font-size: 0.63rem;

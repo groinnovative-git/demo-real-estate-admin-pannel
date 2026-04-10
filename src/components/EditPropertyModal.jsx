@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { X, Loader, Upload, MapPin } from 'lucide-react';
 import { useProperties } from '../context/PropertyContext';
-import { buildPropertyFormData, getErrorMessage } from '../utils/propertyPayloadMapper';
+import { buildPropertyFormData, getErrorMessage, getPropertyDisplayPrice } from '../utils/propertyPayloadMapper';
 import { getAmenitiesForType } from '../data/amenitiesByPropertyType';
 import { compressImages } from '../utils/imageCompressor';
 import PropertyVideoSection from './PropertyVideoSection';
@@ -25,6 +25,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
 
     const { updateProperty } = useProperties();
     const isPg = property.type === 'pg';
+    const displayPrice = getPropertyDisplayPrice(property);
 
     // Dynamic amenity list based on property type
     const currentAmenities = useMemo(() => getAmenitiesForType(property.type), [property.type]);
@@ -32,7 +33,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
     // Pre-populate form from the normalised property shape
     const [form, setForm] = useState({
         title:          property.title          || '',
-        price:          isPg ? (property.monthlyRent ?? property.price ?? '') : (property.price ?? ''),
+        price:          isPg ? (property.monthlyRent ?? displayPrice ?? '') : (displayPrice ?? ''),
         location:       property.location       || '',
         area:           property.area           || '',
         carpetArea:     property.area           || '',   // reuse area as carpetArea for mapper
@@ -54,7 +55,8 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         floorDetails:   property.floorDetails   || '',
         landType:               property.landType               || '',
         govApprovedCertificate: property.govApprovedCertificate || '',
-        status:         property.status === 'sold' ? 'sold' : 'rent',
+        listingType:    property.isSale ? 'sale' : 'rent',
+        status:         property.status === 'sold' ? 'sold' : 'active',
         loanSupport:    property.loanSupport    || false,
         loanPercentage: property.loanPercentage || '',
         amenities:      Array.isArray(property.amenities) ? [...property.amenities] : [],
@@ -69,7 +71,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
         nearbySchoolDist: property.nearbySchoolDist || '', nearbySchoolUnit: property.nearbySchoolUnit || 'km',
         nearbyStationDist: property.nearbyStationDist || '', nearbyStationUnit: property.nearbyStationUnit || 'km',
         nearbyBusStandDist: property.nearbyBusStandDist || '', nearbyBusStandUnit: property.nearbyBusStandUnit || 'km',
-        monthlyRent:    isPg ? (property.monthlyRent ?? property.price ?? '') : '',
+        monthlyRent:    isPg ? (property.monthlyRent ?? displayPrice ?? '') : '',
         depositAmount:  property.depositAmount || '',
         availableFrom:  property.availableFrom || '',
         sharingType:    property.sharingType || '',
@@ -84,6 +86,11 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
     const fileRef = useRef();
     const [loading, setLoading] = useState(false);
     const [error,   setError]   = useState('');
+    const preventNumberWheelChange = (e) => {
+        if (e.target instanceof HTMLInputElement && e.target.type === 'number') {
+            e.target.blur();
+        }
+    };
 
     const handleImageChange = (e, index) => {
         const file = e.target.files[0];
@@ -197,7 +204,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                     </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="pm-form">
+                <form onSubmit={handleSubmit} onWheelCapture={preventNumberWheelChange} className="pm-form">
                     <div className="pm-body">
 
                         {error && (
@@ -371,57 +378,73 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                             <div className="form-group">
                                 <label className="form-label">Loan Support & Listing Type</label>
                                 <div className="form-toggle-row">
-                                    <div className="form-toggle-cluster">
-                                        <button
-                                            type="button"
-                                            role="switch"
-                                            aria-checked={!!form.loanSupport}
-                                            className={`loan-toggle-switch${form.loanSupport ? ' loan-toggle-switch--on' : ''}`}
-                                            onClick={() => setForm(f => ({ 
-                                                ...f, 
-                                                loanSupport: !f.loanSupport,
-                                                loanPercentage: !f.loanSupport ? f.loanPercentage : ''
-                                            }))}
-                                        >
-                                            <span className="loan-toggle-thumb" />
-                                        </button>
-                                        <span className="loan-toggle-label">
-                                            {form.loanSupport ? 'Available' : 'Not Available'}
-                                        </span>
-                                    </div>
-                                    {form.loanSupport && (
-                                        <input 
-                                            className="form-control" 
-                                            type="number" 
-                                            name="loanPercentage" 
-                                            value={form.loanPercentage} 
-                                            onChange={(e) => {
-                                                let val = parseInt(e.target.value, 10);
-                                                if (isNaN(val)) val = '';
-                                                else if (val < 1) val = 1;
-                                                else if (val > 100) val = 100;
-                                                setForm(f => ({ ...f, loanPercentage: val }));
-                                            }} 
-                                            placeholder="%"
-                                            min={1}
-                                            max={100}
-                                            style={{ width: '80px', padding: '6px 12px', minHeight: '34px', marginBottom: 0, flexShrink: 0 }}
-                                        />
+                                    {!isPg && (
+                                        <>
+                                            <div className="form-toggle-cluster">
+                                                <button
+                                                    type="button"
+                                                    role="switch"
+                                                    aria-checked={!!form.loanSupport}
+                                                    className={`loan-toggle-switch${form.loanSupport ? ' loan-toggle-switch--on' : ''}`}
+                                                    onClick={() => setForm(f => ({ 
+                                                        ...f, 
+                                                        loanSupport: !f.loanSupport,
+                                                        loanPercentage: !f.loanSupport ? f.loanPercentage : ''
+                                                    }))}
+                                                >
+                                                    <span className="loan-toggle-thumb" />
+                                                </button>
+                                                <span className="loan-toggle-label">
+                                                    {form.loanSupport ? 'Available' : 'Not Available'}
+                                                </span>
+                                            </div>
+                                            {form.loanSupport && (
+                                                <input 
+                                                    className="form-control" 
+                                                    type="number" 
+                                                    name="loanPercentage" 
+                                                    value={form.loanPercentage} 
+                                                    onChange={(e) => {
+                                                        let val = parseInt(e.target.value, 10);
+                                                        if (isNaN(val)) val = '';
+                                                        else if (val < 1) val = 1;
+                                                        else if (val > 100) val = 100;
+                                                        setForm(f => ({ ...f, loanPercentage: val }));
+                                                    }} 
+                                                    placeholder="%"
+                                                    min={1}
+                                                    max={100}
+                                                    style={{ width: '80px', padding: '6px 12px', minHeight: '34px', marginBottom: 0, flexShrink: 0 }}
+                                                />
+                                            )}
+                                        </>
                                     )}
-                                    <div className="listing-toggle" aria-label="Listing type">
+                                    <select
+                                        className="form-control"
+                                        name="listingType"
+                                        value={form.listingType}
+                                        onChange={handleChange}
+                                        aria-label="Listing type"
+                                        style={{ width: '120px', marginBottom: 0, flexShrink: 0 }}
+                                    >
+                                        <option value="">Select</option>
+                                        <option value="rent">Rent</option>
+                                        <option value="sale">Sale</option>
+                                    </select>
+                                    <div className="listing-toggle" aria-label="Property status">
                                         <button
                                             type="button"
                                             className={`listing-toggle-btn${form.status !== 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--rent' : ''}`}
-                                            onClick={() => setForm(f => ({ ...f, status: 'rent' }))}
+                                            onClick={() => setForm(f => ({ ...f, status: 'active' }))}
                                         >
-                                            Rent
+                                            Active
                                         </button>
                                         <button
                                             type="button"
                                             className={`listing-toggle-btn${form.status === 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--sold' : ''}`}
                                             onClick={() => setForm(f => ({ ...f, status: 'sold' }))}
                                         >
-                                            Sale
+                                            Sold
                                         </button>
                                     </div>
                                 </div>
@@ -461,7 +484,7 @@ export default function EditPropertyModal({ property, onClose, onSaved }) {
                                     { label: 'Hospital', keyDist: 'nearbyHospitalDist', keyUnit: 'nearbyHospitalUnit' },
                                     { label: 'College', keyDist: 'nearbyCollegeDist', keyUnit: 'nearbyCollegeUnit' },
                                     { label: 'School', keyDist: 'nearbySchoolDist', keyUnit: 'nearbySchoolUnit' },
-                                    { label: 'Station', keyDist: 'nearbyStationDist', keyUnit: 'nearbyStationUnit' },
+                                    { label: 'Railway Station', keyDist: 'nearbyStationDist', keyUnit: 'nearbyStationUnit' },
                                     { label: 'Bus Stand', keyDist: 'nearbyBusStandDist', keyUnit: 'nearbyBusStandUnit' }
                                 ].map(loc => (
                                     <div key={loc.label} className="form-group" style={{ marginBottom: 0 }}>

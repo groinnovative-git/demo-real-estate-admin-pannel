@@ -234,7 +234,7 @@ function NearbyLocationsSection({ form, handleChange }) {
                     { label: 'Hospital', keyDist: 'nearbyHospitalDist', keyUnit: 'nearbyHospitalUnit' },
                     { label: 'College', keyDist: 'nearbyCollegeDist', keyUnit: 'nearbyCollegeUnit' },
                     { label: 'School', keyDist: 'nearbySchoolDist', keyUnit: 'nearbySchoolUnit' },
-                    { label: 'Station', keyDist: 'nearbyStationDist', keyUnit: 'nearbyStationUnit' },
+                    { label: 'Railway Station', keyDist: 'nearbyStationDist', keyUnit: 'nearbyStationUnit' },
                     { label: 'Bus Stand', keyDist: 'nearbyBusStandDist', keyUnit: 'nearbyBusStandUnit' }
                 ].map(loc => (
                     <FieldGroup key={loc.label} label={loc.label}>
@@ -283,7 +283,8 @@ function createInitialForm() {
         mapEmbedSrc: '',
         loanSupport: false,
         loanPercentage: '',
-        status: 'rent',
+        listingType: '',
+        status: 'active',
         apartmentSubType: '',
         plotSubType: '',
         govApprovedCertificate: '',
@@ -362,7 +363,7 @@ function ParticleField() {
 export default function AddProperty() {
     const navigate = useNavigate();
     const { type = 'apartment' } = useParams();
-    const { addProperty } = useProperties();
+    const { addProperty, fetchProperties } = useProperties();
     const fileRef = useRef();
 
     const config = TYPE_CONFIG[type] || TYPE_CONFIG.apartment;
@@ -387,7 +388,8 @@ export default function AddProperty() {
         mapEmbedSrc: '',
         loanSupport: false,
         loanPercentage: '',
-        status: 'rent',
+        listingType: '',
+        status: 'active',
         // ── New PDF fields ──
         apartmentSubType: '',
         plotSubType: '',
@@ -424,7 +426,19 @@ export default function AddProperty() {
 
     const showToast = (message, type = 'error') => setToast({ visible: true, message, type });
     const closeToast = () => setToast({ visible: false, message: '', type: 'error' });
+    const handleViewProperties = async () => {
+        try {
+            await fetchProperties();
+        } finally {
+            navigate('/properties');
+        }
+    };
     const getFieldClass = (name) => `premium-input${errors[name] ? ' premium-input--error' : ''}`;
+    const preventNumberWheelChange = (e) => {
+        if (e.target instanceof HTMLInputElement && e.target.type === 'number') {
+            e.target.blur();
+        }
+    };
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -482,10 +496,21 @@ export default function AddProperty() {
             if (isBlank(form[key])) nextErrors[key] = `${label} is required.`;
         });
 
+        if (isBlank(form.listingType)) {
+            nextErrors.listingType = 'Listing type is required.';
+        }
+
         if (isPg) {
             if (!isPositiveNumber(form.monthlyRent)) nextErrors.monthlyRent = 'Monthly rent must be a valid number.';
             if (!isPositiveNumber(form.depositAmount)) nextErrors.depositAmount = 'Deposit amount must be a valid number.';
             if (!isValidDate(form.availableFrom)) nextErrors.availableFrom = 'Available from must be a valid date.';
+        }
+
+        if (form.loanSupport) {
+            const loanPercentage = Number(form.loanPercentage);
+            if (!Number.isFinite(loanPercentage) || loanPercentage < 1 || loanPercentage > 100) {
+                nextErrors.loanPercentage = 'Loan percentage must be between 1 and 100.';
+            }
         }
 
         setErrors(nextErrors);
@@ -581,7 +606,7 @@ export default function AddProperty() {
                         <button
                             className="btn btn-primary"
                             style={{ background: '#0d6933', borderColor: '#0d6933' }}
-                            onClick={() => navigate('/properties')}
+                            onClick={handleViewProperties}
                         >
                             View Properties
                         </button>
@@ -646,7 +671,7 @@ export default function AddProperty() {
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="premium-form-container" noValidate>
+            <form onSubmit={handleSubmit} onWheelCapture={preventNumberWheelChange} className="premium-form-container" noValidate>
                 {isPg && (
                     <>
                         <div className="card premium-form-section">
@@ -769,8 +794,8 @@ export default function AddProperty() {
                             </div>
                         </FieldGroup>
 
-                        <FieldGroup label="Loan Support & Listing Type">
-                            <div className="form-toggle-row">
+                        <FieldGroup label="Loan Support">
+                            <div className="form-toggle-row" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                                 <div className="form-toggle-cluster">
                                     <button
                                         type="button"
@@ -790,39 +815,59 @@ export default function AddProperty() {
                                     </span>
                                 </div>
                                 {form.loanSupport && (
-                                    <input
-                                        className="premium-input"
-                                        type="number"
-                                        name="loanPercentage"
-                                        value={form.loanPercentage}
-                                        onChange={(e) => {
-                                            let val = parseInt(e.target.value, 10);
-                                            if (isNaN(val)) val = '';
-                                            else if (val < 1) val = 1;
-                                            else if (val > 100) val = 100;
-                                            setForm(f => ({ ...f, loanPercentage: val }));
-                                        }}
-                                        placeholder="%"
-                                        min={1}
-                                        max={100}
-                                        style={{ width: '80px', padding: '6px 12px', minHeight: '38px', fontSize: '14px', marginBottom: 0, flexShrink: 0 }}
-                                    />
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <input
+                                            className={getFieldClass('loanPercentage')}
+                                            type="number"
+                                            name="loanPercentage"
+                                            value={form.loanPercentage}
+                                            onChange={(e) => {
+                                                let val = parseInt(e.target.value, 10);
+                                                if (isNaN(val)) val = '';
+                                                else if (val < 1) val = 1;
+                                                else if (val > 100) val = 100;
+                                                setForm(f => ({ ...f, loanPercentage: val }));
+                                            }}
+                                            placeholder="%"
+                                            min={1}
+                                            max={100}
+                                            style={{ width: '80px', padding: '6px 12px', minHeight: '38px', fontSize: '14px', marginBottom: 0, flexShrink: 0 }}
+                                        />
+                                        {errors.loanPercentage && <div className="premium-field-error">{errors.loanPercentage}</div>}
+                                    </div>
                                 )}
-                                <div className="listing-toggle" aria-label="Listing type">
-                                    <button
-                                        type="button"
-                                        className={`listing-toggle-btn${form.status !== 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--rent' : ''}`}
-                                        onClick={() => setForm(f => ({ ...f, status: 'rent' }))}
+                                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, minWidth: 180 }}>
+                                    <select
+                                        className={getFieldClass('listingType')}
+                                        name="listingType"
+                                        value={form.listingType}
+                                        onChange={handleChange}
+                                        aria-label="Listing type"
+                                        style={{ width: '180px', marginBottom: 0, flexShrink: 0 }}
                                     >
-                                        Rent
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className={`listing-toggle-btn${form.status === 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--sold' : ''}`}
-                                        onClick={() => setForm(f => ({ ...f, status: 'sold' }))}
-                                    >
-                                        Sale
-                                    </button>
+                                        <option value="">Select Listing Type</option>
+                                        <option value="rent">Rent</option>
+                                        <option value="sale">Sale</option>
+                                    </select>
+                                    {errors.listingType && <div className="premium-field-error">{errors.listingType}</div>}
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 6, minWidth: 136 }}>
+                                    <div className="listing-toggle" aria-label="Property status">
+                                            <button
+                                                type="button"
+                                                className={`listing-toggle-btn${form.status !== 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--rent' : ''}`}
+                                                onClick={() => setForm(f => ({ ...f, status: 'active' }))}
+                                            >
+                                                Active
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className={`listing-toggle-btn${form.status === 'sold' ? ' listing-toggle-btn--active listing-toggle-btn--sold' : ''}`}
+                                                onClick={() => setForm(f => ({ ...f, status: 'sold' }))}
+                                            >
+                                                Sold
+                                            </button>
+                                    </div>
                                 </div>
                             </div>
                         </FieldGroup>
